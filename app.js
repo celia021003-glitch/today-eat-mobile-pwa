@@ -35,6 +35,98 @@ const FOOD_DB = {
   "蛋糕": { unit: "块", base: 1, kcal: 360, protein: 5, carbs: 42, fat: 19, category: "甜食", emoji: "🍰" },
   "辣椒酱": { unit: "勺", base: 1, kcal: 45, protein: 0.5, carbs: 3, fat: 3.5, category: "调味", emoji: "🌶️" },
 };
+const CATEGORY_OPTIONS = ["蛋白质", "蔬菜", "主食", "水果", "饮品", "甜食", "外卖", "调味", "其他"];
+
+const CATEGORY_RULES = [
+  {
+    category: "蛋白质",
+    keywords: [
+      "鸡胸", "鸡肉", "鸡腿", "鸡翅", "鸡蛋", "蛋", "牛肉", "羊肉", "猪肉", "瘦肉",
+      "鱼", "三文鱼", "鳕鱼", "金枪鱼", "虾", "蟹", "贝", "豆腐", "豆干", "豆皮",
+      "腐竹", "毛豆", "鹰嘴豆", "酸奶", "希腊酸奶", "牛奶", "奶酪", "芝士", "蛋白粉"
+    ]
+  },
+  {
+    category: "蔬菜",
+    keywords: [
+      "青菜", "白菜", "娃娃菜", "生菜", "菠菜", "油麦菜", "西兰花", "花菜",
+      "蘑菇", "香菇", "金针菇", "菌菇", "番茄", "西红柿", "黄瓜", "胡萝卜",
+      "萝卜", "芹菜", "茄子", "豆角", "四季豆", "芦笋", "南瓜", "冬瓜",
+      "海带", "紫菜", "莲藕", "玉米笋", "洋葱", "彩椒", "辣椒"
+    ]
+  },
+  {
+    category: "主食",
+    keywords: [
+      "米饭", "饭", "糙米", "杂粮", "粥", "燕麦", "面", "面条", "意面",
+      "荞麦", "粉", "粉丝", "米粉", "河粉", "馒头", "包子", "饺子", "馄饨",
+      "面包", "吐司", "贝果", "饼", "煎饼", "土豆", "红薯", "紫薯",
+      "玉米", "藜麦", "麦片"
+    ]
+  },
+  {
+    category: "水果",
+    keywords: [
+      "苹果", "香蕉", "梨", "橙", "橘", "柑", "葡萄", "草莓", "蓝莓",
+      "树莓", "猕猴桃", "奇异果", "西瓜", "哈密瓜", "芒果", "桃", "李子",
+      "菠萝", "牛油果", "柠檬", "樱桃", "火龙果"
+    ]
+  },
+  {
+    category: "饮品",
+    keywords: [
+      "奶茶", "咖啡", "拿铁", "美式", "果汁", "可乐", "汽水", "茶",
+      "豆奶", "豆浆", "燕麦奶", "杏仁奶", "椰奶", "牛奶", "酸奶饮",
+      "饮料", "奶昔", "smoothie"
+    ]
+  },
+  {
+    category: "甜食",
+    keywords: [
+      "蛋糕", "甜甜圈", "饼干", "巧克力", "冰淇淋", "雪糕", "糖",
+      "布丁", "奶油", "泡芙", "可颂", "曲奇", "马卡龙", "甜品", "蛋挞"
+    ]
+  },
+  {
+    category: "外卖",
+    keywords: [
+      "麻辣烫", "火锅", "炸鸡", "汉堡", "披萨", "寿司", "盖饭", "拌饭",
+      "外卖", "便当", "轻食", "沙拉", "烧烤", "串", "煲仔饭", "炒饭",
+      "炒面", "米线", "螺蛳粉", "酸辣粉", "拉面"
+    ]
+  },
+  {
+    category: "调味",
+    keywords: [
+      "酱", "辣椒酱", "沙拉酱", "蛋黄酱", "番茄酱", "酱油", "醋",
+      "蚝油", "麻酱", "花生酱", "蜂蜜", "糖浆", "油", "橄榄油",
+      "香油", "调料", "蘸料"
+    ]
+  }
+];
+
+function classifyFoodName(name = "") {
+  const value = String(name).trim();
+  const text = value.toLowerCase().replace(/\s+/g, "");
+  if (!text) return "其他";
+  if (FOOD_DB[value]?.category) return FOOD_DB[value].category;
+
+  for (const rule of CATEGORY_RULES) {
+    if (rule.keywords.some(keyword => text.includes(String(keyword).toLowerCase()))) {
+      return rule.category;
+    }
+  }
+
+  return "其他";
+}
+
+function categoryHintText(name = "") {
+  const value = String(name).trim();
+  if (!value) return "输入食材后，我会先帮你自动判断分类；不准的话你也可以手动改。";
+  const category = classifyFoodName(value);
+  if (category === "其他") return `暂时没判断出「${value}」的分类，先归到「其他」。你可以手动选择。`;
+  return `我猜「${value}」属于「${category}」。如果不准，手动改一下就好。`;
+}
 
 const app = document.querySelector("#app");
 const dateLabel = document.querySelector("#dateLabel");
@@ -385,9 +477,10 @@ function pantryHtml(pantry) {
             <input id="pantryName" type="text" placeholder="比如：鸡胸肉" />
           </label>
           <label>分类
-            <select id="pantryCategory">
-              <option>蛋白质</option><option>蔬菜</option><option>主食</option><option>饮品</option><option>调味</option><option>其他</option>
-            </select>
+           <select id="pantryCategory">
+  ${CATEGORY_OPTIONS.map(c => `<option>${c}</option>`).join("")}
+</select>
+<small id="categoryHint" class="soft-note">输入食材后，我会先帮你自动判断分类。</small>
           </label>
         </div>
         <div class="form-row">
@@ -430,12 +523,34 @@ function cravingsHtml(cravings) {
 }
 
 function bindPantry() {
+  const nameInput = document.querySelector("#pantryName");
+  const categorySelect = document.querySelector("#pantryCategory");
+  const hint = document.querySelector("#categoryHint");
+
+  const updateCategory = () => {
+    const name = nameInput.value.trim();
+    const category = classifyFoodName(name);
+    categorySelect.value = category;
+    if (hint) hint.textContent = categoryHintText(name);
+  };
+
+  nameInput.addEventListener("input", updateCategory);
+  updateCategory();
+
   document.querySelector("#addPantryBtn").addEventListener("click", () => {
-    const name = document.querySelector("#pantryName").value.trim();
+    const name = nameInput.value.trim();
     if (!name) return showToast("先写一个食材名字");
-    const item = { id: uid(), name, category: document.querySelector("#pantryCategory").value, amount: document.querySelector("#pantryAmount").value.trim(), expire: document.querySelector("#pantryExpire").value };
+
+    const item = {
+      id: uid(),
+      name,
+      category: categorySelect.value || classifyFoodName(name),
+      amount: document.querySelector("#pantryAmount").value.trim(),
+      expire: document.querySelector("#pantryExpire").value
+    };
+
     setPantry([item, ...getPantry()]);
-    showToast("放进小冰箱了");
+    showToast(`放进小冰箱了，分类是「${item.category}」`);
     renderLists();
   });
 }
@@ -451,8 +566,33 @@ function bindCravings() {
 window.deletePantry = (id) => { setPantry(getPantry().filter(x => x.id !== id)); showToast("已移除食材"); render(); };
 window.deleteCraving = (id) => { setCravings(getCravings().filter(x => x.id !== id)); showToast("已移除想吃记录"); render(); };
 
-function categoryEmoji(cat) { return ({ 蛋白质: "🍗", 蔬菜: "🥬", 主食: "🍚", 饮品: "🥛", 调味: "🌶️" }[cat] || "🫙"); }
-function chipClass(cat) { return ({ 蛋白质: "sage", 蔬菜: "sage", 主食: "apricot", 饮品: "blue", 调味: "pink" }[cat] || "lav"); }
+function categoryEmoji(cat) {
+  return ({
+    蛋白质: "🍗",
+    蔬菜: "🥬",
+    主食: "🍚",
+    水果: "🍎",
+    饮品: "🥛",
+    甜食: "🍰",
+    外卖: "🥡",
+    调味: "🌶️",
+    其他: "🫙"
+  }[cat] || "🫙");
+}
+
+function chipClass(cat) {
+  return ({
+    蛋白质: "sage",
+    蔬菜: "sage",
+    主食: "apricot",
+    水果: "sage",
+    饮品: "blue",
+    甜食: "pink",
+    外卖: "lav",
+    调味: "pink",
+    其他: "lav"
+  }[cat] || "lav");
+}
 function cravingEmoji(name) { if (name.includes("奶茶")) return "🧋"; if (name.includes("火锅")) return "🍲"; if (name.includes("辣") || name.includes("麻辣")) return "🌶️"; if (name.includes("蛋糕") || name.includes("甜")) return "🍰"; if (name.includes("炸")) return "🍗"; return "🍽️"; }
 function cravingAdvice(name) {
   if (name.includes("奶茶")) return "可以小杯少糖，今天别再叠加蛋糕。";
