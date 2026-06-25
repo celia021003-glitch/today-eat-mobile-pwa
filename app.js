@@ -577,7 +577,12 @@ function renderLog() {
 }
 
 
-function aiMoney(n) { return `$${Number(n || 0).toFixed(5)}`; }
+function aiMoney(n, currency = "USD") {
+  const cur = String(currency || "USD").toUpperCase();
+  const symbol = cur === "CNY" ? "¥" : (cur === "USD" ? "$" : `${cur} `);
+  return `${symbol}${Number(n || 0).toFixed(5)}`;
+}
+function aiCurrency() { return getAiUsage()[0]?.currency || "USD"; }
 function aiUsageSummary() {
   const rows = getAiUsage();
   const now = today();
@@ -601,7 +606,8 @@ function recordAiUsage(data = {}) {
     input_tokens: Number(usage.input_tokens || usage.prompt_tokens || 0),
     output_tokens: Number(usage.output_tokens || usage.completion_tokens || 0),
     total_tokens: Number(usage.total_tokens || 0),
-    cost_usd: Number(cost.total_usd || data.estimated_cost_usd || 0)
+    cost_usd: Number(cost.total_usd || data.estimated_cost_usd || 0),
+    currency: cost.currency || data.currency || aiCurrency()
   };
   setAiUsage([row, ...getAiUsage()].slice(0, 300));
   return row;
@@ -609,15 +615,15 @@ function recordAiUsage(data = {}) {
 function aiCostHtml() {
   const s = aiUsageSummary();
   return `<div class="ai-cost-grid">
-    <div class="ai-cost-tile"><span>今日 AI 费用</span><strong>${aiMoney(s.today.cost)}</strong><small>${s.today.count} 次识别</small></div>
-    <div class="ai-cost-tile"><span>本月 AI 费用</span><strong>${aiMoney(s.month.cost)}</strong><small>${s.month.count} 次识别</small></div>
+    <div class="ai-cost-tile"><span>今日 AI 费用</span><strong>${aiMoney(s.today.cost, aiCurrency())}</strong><small>${s.today.count} 次识别</small></div>
+    <div class="ai-cost-tile"><span>本月 AI 费用</span><strong>${aiMoney(s.month.cost, aiCurrency())}</strong><small>${s.month.count} 次识别</small></div>
     <div class="ai-cost-tile"><span>本月 tokens</span><strong>${s.month.input + s.month.output}</strong><small>输入 ${s.month.input} / 输出 ${s.month.output}</small></div>
   </div>`;
 }
 function aiLedgerHtml(limit = 6) {
   const rows = getAiUsage().slice(0, limit);
   if (!rows.length) return `<div class="empty">还没有 AI 消耗记录。识别一次后，这里会显示 tokens 和费用。</div>`;
-  return `<div class="cost-ledger">${rows.map(r => `<div class="cost-ledger-row"><div><strong>${aiMoney(r.cost_usd)}</strong><small>${r.date} ${r.time || ""} · ${r.model || "model"}</small></div><div><strong>${Number(r.total_tokens || r.input_tokens + r.output_tokens)}</strong><small>tokens</small></div></div>`).join("")}</div>`;
+  return `<div class="cost-ledger">${rows.map(r => `<div class="cost-ledger-row"><div><strong>${aiMoney(r.cost_usd, r.currency || aiCurrency())}</strong><small>${r.date} ${r.time || ""} · ${r.model || "model"}</small></div><div><strong>${Number(r.total_tokens || r.input_tokens + r.output_tokens)}</strong><small>tokens</small></div></div>`).join("")}</div>`;
 }
 function renderPhoto() {
   const s = getSettings();
@@ -647,10 +653,10 @@ function renderPhoto() {
       <input class="file-input" id="photoAlbumInput" type="file" accept="image/*" />
       <div class="form-grid" style="margin-top:14px">
         <label>AI 后端地址
-          <input id="photoAiProxyUrl" type="url" value="${escapeAttr(s.aiProxyUrl || "")}" placeholder="https://你的-worker.workers.dev/analyze-food" />
+          <input id="photoAiProxyUrl" type="url" value="${escapeAttr(s.aiProxyUrl || "")}" placeholder="https://你的-worker.workers.dev" />
         </label>
         <label>AI 访问口令
-          <input id="photoAiClientToken" type="password" value="${escapeAttr(s.aiClientToken || "")}" placeholder="不是 OpenAI key，是你自己设置的口令" autocomplete="off" />
+          <input id="photoAiClientToken" type="password" value="${escapeAttr(s.aiClientToken || "")}" placeholder="不是硅基流动 API key，是你自己设置的口令" autocomplete="off" />
         </label>
         <label>图片细节
           <select id="photoAiDetail">
@@ -747,7 +753,7 @@ function renderPhoto() {
       bindAiResultActions(lastAi, imageData);
       showToast("AI 识别完成，先检查再保存");
     } catch (err) {
-      panel.innerHTML = `<div class="ai-result-card"><p class="soft-note"><strong>识别失败：</strong>${escapeHtml(err.message || "未知错误")}</p><p class="soft-note">检查：Worker 地址是否正确、访问口令是否一致、OpenAI key 是否已在 Cloudflare Secret 中设置。</p></div>`;
+      panel.innerHTML = `<div class="ai-result-card"><p class="soft-note"><strong>识别失败：</strong>${escapeHtml(err.message || "未知错误")}</p><p class="soft-note">检查：Worker 地址是否正确、访问口令是否一致、硅基流动 API key 是否已在 Cloudflare Secret 中设置。</p></div>`;
     } finally {
       btn.disabled = false;
       btn.textContent = "AI 识别这张图";
@@ -762,7 +768,7 @@ function aiResultHtml(result, data, usageRow, imageData) {
     <div class="card-title"><h2>识别结果</h2><small>${escapeHtml(data.model || "AI")}</small></div>
     <p class="advice-text">${escapeHtml(result.summary || "我已经先估算了一版，你可以修改后再保存。")}</p>
     <div class="ai-cost-grid">
-      <div class="ai-cost-tile"><span>本次费用</span><strong>${aiMoney(cost.total_usd || usageRow.cost_usd)}</strong><small>预估 USD</small></div>
+      <div class="ai-cost-tile"><span>本次费用</span><strong>${aiMoney(cost.total_usd || usageRow.cost_usd, cost.currency || usageRow.currency || aiCurrency())}</strong><small>预估费用</small></div>
       <div class="ai-cost-tile"><span>输入 tokens</span><strong>${Number(usage.input_tokens || usage.prompt_tokens || usageRow.input_tokens || 0)}</strong><small>含图片</small></div>
       <div class="ai-cost-tile"><span>输出 tokens</span><strong>${Number(usage.output_tokens || usage.completion_tokens || usageRow.output_tokens || 0)}</strong><small>分析文字</small></div>
     </div>

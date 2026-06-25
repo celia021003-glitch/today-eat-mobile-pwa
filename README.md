@@ -1,14 +1,14 @@
-# 今天怎么吃 · v7.2
+# 今天怎么吃 · v7.3 硅基流动版
 
-本版在 v7 AI 拍照识别基础上，把拍照入口改得更明显：
+本版本用于硅基流动 SiliconFlow API：
 
-- 底部导航新增「拍照」入口
-- 保留右下角悬浮相机按钮，并加上“拍照”文字提示
-- 首页仍有“打开拍照识别”卡片
-- 记录页也有“用拍照识别这一餐”按钮
-- AI 后端仍然使用 Cloudflare Worker，API key 不放前端
+- 前端仍然放在 GitHub Pages
+- API key 放在 Cloudflare Worker Secret
+- Worker 调用 `https://api.siliconflow.cn/v1/chat/completions`
+- 支持拍照 / 相册上传
+- 支持费用窗口；价格通过 Worker 环境变量配置
 
-上传 GitHub 文件：
+## GitHub Pages 需要替换
 
 - index.html
 - styles.css
@@ -16,13 +16,33 @@
 - sw.js
 - manifest.webmanifest
 
-更新后访问：
+访问：
 
-https://celia021003-glitch.github.io/today-eat-mobile-pwa/?v=72
+```
+https://celia021003-glitch.github.io/today-eat-mobile-pwa/?v=73
+```
 
+## Cloudflare Worker 需要替换
 
-## v7.2 更新
+把 `worker.js` 内容复制到 Cloudflare Worker 的 Edit code 里，然后 Deploy。
 
-- AI 拍照记录页面新增两个明确入口：`📷 现在拍一张` 和 `🖼 从相册选择`。
-- 从相册选择不再使用 `capture`，可以补传已经拍好的饭菜照片。
-- 现场拍照仍然优先调用后置摄像头。
+## Cloudflare Secret / Variables
+
+必填：
+
+```
+SILICONFLOW_API_KEY = 你的硅基流动 API key，类型 Secret
+APP_CLIENT_TOKEN = 你自己设置的访问口令，类型 Secret
+```
+
+可选：
+
+```
+SILICONFLOW_MODEL = Qwen/Qwen2.5-VL-72B-Instruct
+COST_CURRENCY = CNY
+INPUT_PRICE_PER_1M = 你在硅基流动模型页看到的输入价格
+OUTPUT_PRICE_PER_1M = 你在硅基流动模型页看到的输出价格
+ALLOWED_ORIGIN = https://celia021003-glitch.github.io
+```
+
+如果你已经把硅基流动 key 存在 `OPENAI_API_KEY`，新版 Worker 也能读取，但更建议改名为 `SILICONFLOW_API_KEY`，避免混淆。
