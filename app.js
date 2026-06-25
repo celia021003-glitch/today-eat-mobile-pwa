@@ -11,7 +11,8 @@ const STORAGE = {
   weight: "todayEat.weight.v1",
   periods: "todayEat.periods.v1",
   planner: "todayEat.planner.v1",
-  selfNotes: "todayEat.selfNotes.v1"
+  selfNotes: "todayEat.selfNotes.v1",
+  aiUsage: "todayEat.aiUsage.v1"
 };
 
 const THEME_PRESETS = {
@@ -222,6 +223,9 @@ function defaultSettings() {
     preference: "喜欢辣，喜欢热食，减脂但不想极端节食",
     cycleLength: 28,
     periodLength: 5,
+    aiProxyUrl: "",
+    aiClientToken: "",
+    aiDetail: "low",
     theme: "morandi-cream",
     customColors: normalizeColors(THEME_PRESETS["morandi-cream"].colors),
     appearance: normalizeAppearance(APPEARANCE_DEFAULTS)
@@ -260,6 +264,8 @@ function getPlannerCache() { return load(STORAGE.planner, {}); }
 function setPlannerCache(v) { save(STORAGE.planner, v); }
 function getSelfNotes() { return load(STORAGE.selfNotes, []); }
 function setSelfNotes(v) { save(STORAGE.selfNotes, v); }
+function getAiUsage() { return load(STORAGE.aiUsage, []); }
+function setAiUsage(v) { save(STORAGE.aiUsage, v); }
 
 function normalizePantryItem(item) {
   const category = item.category || classifyFoodName(item.name);
@@ -535,6 +541,7 @@ function renderHome() {
       <div class="badge-card"><span>📝</span><strong>${todoOpen}</strong><small>待办未完成</small></div>
       <div class="badge-card"><span>💸</span><strong>${currency(todaySpent)}</strong><small>今日支出</small></div>
     </section>
+    <section class="card ai-hero"><div class="card-title"><h2>拍照记录这一餐</h2><small>📷</small></div><p class="soft-note">想快速记饭，可以直接拍一张，AI 会估算热量和营养，你确认后再保存。</p><button class="primary-btn full" onclick="goPhoto()">打开拍照识别</button></section>
     <section class="card advice-card"><div class="card-title"><h2>今天的判断</h2><small>🫧</small></div><p class="advice-text">${dailyAdvice(t, s)}</p></section>
     <section class="card"><div class="card-title"><h2>下一餐建议</h2><small>用清单生成</small></div><p class="soft-note">${recipeAdvice()}</p><div class="tag-row" style="margin-top:12px"><span class="tag sage">🥬 有蔬菜更稳</span><span class="tag pink">🌶️ 辣可以少油</span><span class="tag blue">🍚 主食不用全戒</span></div></section>
     <section class="card"><div class="card-title"><h2>今天的记录</h2><small>${t.logs.length} 条</small></div>${t.logs.length ? `<div class="list-stack">${t.logs.map(logItemHtml).join("")}</div>` : `<div class="empty">还没有记录。先记一餐就很好，不用一开始就做到很细。</div>`}</section>`;
@@ -544,11 +551,13 @@ function logItemHtml(x) {
   return `<div class="list-item"><div><strong>${FOOD_DB[x.food]?.emoji || "🍽️"} ${x.food}</strong><small>${x.meal} · ${x.amount}${x.unit} · ${money0(x.kcal)} kcal</small></div><button class="delete-btn" onclick="deleteLog('${x.id}')">×</button></div>`;
 }
 window.deleteLog = (id) => { setLogs(getLogs().filter(x => x.id !== id)); showToast("已删除这一条"); render(); };
+window.goPhoto = () => { page = "photo"; window.scrollTo({top:0, behavior:"smooth"}); render(); };
 
 function renderLog() {
   const foodOptions = Object.keys(FOOD_DB).map(name => `<option value="${name}">${FOOD_DB[name].emoji} ${name} · ${FOOD_DB[name].category}</option>`).join("");
   const quick = ["鸡胸肉", "鸡蛋", "熟米饭", "燕麦奶", "青菜", "西兰花", "豆腐", "普通奶茶"];
-  app.innerHTML = `<section class="card"><div class="card-title"><h2>这顿是什么？</h2><small>🍱</small></div><div class="segmented" id="mealSegment">${["早餐", "午餐", "晚餐", "加餐"].map(m => `<button class="${activeMeal === m ? "active" : ""}" data-meal="${m}">${m}</button>`).join("")}</div><div class="form-grid" style="margin-top:14px"><label>食物<select id="foodSelect">${foodOptions}</select></label><div class="form-row"><label>数量<input id="amountInput" type="number" min="0" step="10" value="100" /></label><label>单位<input id="unitInput" type="text" value="g" /></label></div><label>备注，可不填<input id="noteInput" type="text" placeholder="比如：少油、外卖、很辣" /></label><button class="primary-btn full" id="saveLogBtn">保存这一餐</button></div></section><section class="card compact"><div class="card-title"><h2>常吃快捷添加</h2><small>点一下会填入</small></div><div class="quick-grid">${quick.map(name => `<button class="quick-food" data-food="${name}"><strong>${FOOD_DB[name].emoji} ${name}</strong><small>${FOOD_DB[name].base}${FOOD_DB[name].unit} · ${FOOD_DB[name].kcal} kcal</small></button>`).join("")}</div></section><section class="card compact"><p class="soft-note">外卖和酱料类热量只是估算。油量、糖、麻酱、奶盖、小料都会让实际热量明显变化。</p></section>`;
+  app.innerHTML = `<section class="card"><div class="card-title"><h2>这顿是什么？</h2><small>🍱</small></div><div class="segmented" id="mealSegment">${["早餐", "午餐", "晚餐", "加餐"].map(m => `<button class="${activeMeal === m ? "active" : ""}" data-meal="${m}">${m}</button>`).join("")}</div><div class="form-grid" style="margin-top:14px"><button class="secondary-btn full" type="button" id="openPhotoFromLogBtn">📷 用拍照识别这一餐</button><label>食物<select id="foodSelect">${foodOptions}</select></label><div class="form-row"><label>数量<input id="amountInput" type="number" min="0" step="10" value="100" /></label><label>单位<input id="unitInput" type="text" value="g" /></label></div><label>备注，可不填<input id="noteInput" type="text" placeholder="比如：少油、外卖、很辣" /></label><button class="primary-btn full" id="saveLogBtn">保存这一餐</button></div></section><section class="card compact"><div class="card-title"><h2>常吃快捷添加</h2><small>点一下会填入</small></div><div class="quick-grid">${quick.map(name => `<button class="quick-food" data-food="${name}"><strong>${FOOD_DB[name].emoji} ${name}</strong><small>${FOOD_DB[name].base}${FOOD_DB[name].unit} · ${FOOD_DB[name].kcal} kcal</small></button>`).join("")}</div></section><section class="card compact"><p class="soft-note">外卖和酱料类热量只是估算。油量、糖、麻酱、奶盖、小料都会让实际热量明显变化。</p></section>`;
+  document.querySelector("#openPhotoFromLogBtn")?.addEventListener("click", () => { page = "photo"; render(); });
   const foodSelect = document.querySelector("#foodSelect");
   const amountInput = document.querySelector("#amountInput");
   const unitInput = document.querySelector("#unitInput");
@@ -567,18 +576,242 @@ function renderLog() {
   });
 }
 
+
+function aiMoney(n) { return `$${Number(n || 0).toFixed(5)}`; }
+function aiUsageSummary() {
+  const rows = getAiUsage();
+  const now = today();
+  const month = now.slice(0, 7);
+  const todayRows = rows.filter(x => x.date === now);
+  const monthRows = rows.filter(x => String(x.date || "").startsWith(month));
+  const sum = arr => arr.reduce((acc, x) => ({
+    count: acc.count + 1,
+    input: acc.input + Number(x.input_tokens || 0),
+    output: acc.output + Number(x.output_tokens || 0),
+    cost: acc.cost + Number(x.cost_usd || 0)
+  }), { count: 0, input: 0, output: 0, cost: 0 });
+  return { today: sum(todayRows), month: sum(monthRows), all: sum(rows) };
+}
+function recordAiUsage(data = {}) {
+  const usage = data.usage || {};
+  const cost = data.cost || {};
+  const row = {
+    id: uid(), date: today(), time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    model: data.model || "",
+    input_tokens: Number(usage.input_tokens || usage.prompt_tokens || 0),
+    output_tokens: Number(usage.output_tokens || usage.completion_tokens || 0),
+    total_tokens: Number(usage.total_tokens || 0),
+    cost_usd: Number(cost.total_usd || data.estimated_cost_usd || 0)
+  };
+  setAiUsage([row, ...getAiUsage()].slice(0, 300));
+  return row;
+}
+function aiCostHtml() {
+  const s = aiUsageSummary();
+  return `<div class="ai-cost-grid">
+    <div class="ai-cost-tile"><span>今日 AI 费用</span><strong>${aiMoney(s.today.cost)}</strong><small>${s.today.count} 次识别</small></div>
+    <div class="ai-cost-tile"><span>本月 AI 费用</span><strong>${aiMoney(s.month.cost)}</strong><small>${s.month.count} 次识别</small></div>
+    <div class="ai-cost-tile"><span>本月 tokens</span><strong>${s.month.input + s.month.output}</strong><small>输入 ${s.month.input} / 输出 ${s.month.output}</small></div>
+  </div>`;
+}
+function aiLedgerHtml(limit = 6) {
+  const rows = getAiUsage().slice(0, limit);
+  if (!rows.length) return `<div class="empty">还没有 AI 消耗记录。识别一次后，这里会显示 tokens 和费用。</div>`;
+  return `<div class="cost-ledger">${rows.map(r => `<div class="cost-ledger-row"><div><strong>${aiMoney(r.cost_usd)}</strong><small>${r.date} ${r.time || ""} · ${r.model || "model"}</small></div><div><strong>${Number(r.total_tokens || r.input_tokens + r.output_tokens)}</strong><small>tokens</small></div></div>`).join("")}</div>`;
+}
 function renderPhoto() {
+  const s = getSettings();
   const photos = getPhotos().filter(x => x.date === today());
-  app.innerHTML = `<section class="card"><div class="card-title"><h2>拍照记录</h2><small>📷</small></div><label class="photo-drop" for="photoInput"><span class="camera">📸</span><strong>拍一张今天吃的</strong><span class="soft-note">第一版先保存照片和备注；后面再接入 AI 识别。</span><img id="previewImg" class="photo-preview" style="display:none" alt="照片预览" /></label><input class="file-input" id="photoInput" type="file" accept="image/*" capture="environment" /><div class="form-grid" style="margin-top:14px"><label>照片里的食物<input id="photoFoodInput" type="text" placeholder="比如：鸡胸肉、米饭、青菜" /></label><label>简单备注<textarea id="photoNoteInput" rows="3" placeholder="比如：外卖，油有点多；或者少油煎的"></textarea></label><button class="primary-btn full" id="savePhotoBtn">保存照片记录</button></div></section><section class="card"><div class="card-title"><h2>今天的照片</h2><small>${photos.length} 张</small></div>${photos.length ? `<div class="list-stack">${photos.map(p => `<div class="list-item"><div><strong>📷 ${p.food || "一餐"}</strong><small>${p.note || "没有备注"}</small></div><button class="delete-btn" onclick="deletePhoto('${p.id}')">×</button></div>`).join("")}</div>` : `<div class="empty">还没有照片。拍照只是为了帮你回忆，不用拍得像广告图。</div>`}</section>`;
+  app.innerHTML = `
+    <section class="card ai-hero">
+      <div class="card-title"><h2>AI 拍照记录</h2><small>📷</small></div>
+      <p class="soft-note">拍一张你今天吃的。AI 会先估算食物、份量和热量，你确认后再保存。热量只是辅助估算，不是绝对准确。</p>
+      ${aiCostHtml()}
+      <div class="ai-status"><span class="ai-dot ${s.aiProxyUrl && s.aiClientToken ? "" : "warn"}"></span><span>${s.aiProxyUrl && s.aiClientToken ? "AI 后端已填写，可以识别。" : "还没填写 AI 后端地址或访问口令；可以先在本页/设置里填写。"}</span></div>
+    </section>
+
+    <section class="card">
+      <div class="card-title"><h2>拍一张饭</h2><small>${activeMeal}</small></div>
+      <div class="segmented" id="photoMealSegment">${["早餐", "午餐", "晚餐", "加餐"].map(m => `<button class="${activeMeal === m ? "active" : ""}" data-photomeal="${m}">${m}</button>`).join("")}</div>
+      <label class="photo-drop" for="photoInput" style="margin-top:14px">
+        <span class="camera">📸</span>
+        <strong>拍照 / 从相册选择</strong>
+        <span class="soft-note">我会先把图片压缩到适合识别的大小，降低费用。</span>
+        <img id="previewImg" class="photo-preview" style="display:none" alt="照片预览" />
+      </label>
+      <input class="file-input" id="photoInput" type="file" accept="image/*" capture="environment" />
+      <div class="form-grid" style="margin-top:14px">
+        <label>AI 后端地址
+          <input id="photoAiProxyUrl" type="url" value="${escapeAttr(s.aiProxyUrl || "")}" placeholder="https://你的-worker.workers.dev/analyze-food" />
+        </label>
+        <label>AI 访问口令
+          <input id="photoAiClientToken" type="password" value="${escapeAttr(s.aiClientToken || "")}" placeholder="不是 OpenAI key，是你自己设置的口令" autocomplete="off" />
+        </label>
+        <label>图片细节
+          <select id="photoAiDetail">
+            <option value="low" ${s.aiDetail === "low" ? "selected" : ""}>低细节：省钱，适合普通单人餐</option>
+            <option value="high" ${s.aiDetail === "high" ? "selected" : ""}>高细节：更仔细，适合多菜/火锅</option>
+            <option value="auto" ${s.aiDetail === "auto" ? "selected" : ""}>自动</option>
+          </select>
+        </label>
+        <label>补充说明，可不填
+          <input id="photoHintInput" type="text" placeholder="比如：半糖奶茶 / 少油 / 这是一人份" />
+        </label>
+        <div class="photo-actions-row">
+          <button class="secondary-btn full" id="saveAiSettingsInlineBtn">保存 AI 设置</button>
+          <button class="primary-btn full" id="analyzePhotoBtn">AI 识别这张图</button>
+        </div>
+      </div>
+      <div id="aiResultPanel"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-title"><h2>AI 消耗小账本</h2><small>最近记录</small></div>
+      ${aiLedgerHtml()}
+    </section>
+
+    <section class="card">
+      <div class="card-title"><h2>今天的照片</h2><small>${photos.length} 张</small></div>
+      ${photos.length ? `<div class="list-stack">${photos.map(p => `<div class="list-item"><div><strong>📷 ${p.food || "一餐"}</strong><small>${p.note || "没有备注"}${p.ai ? ` · AI估算 ${money0(p.ai.total_kcal)} kcal` : ""}</small></div><button class="delete-btn" onclick="deletePhoto('${p.id}')">×</button></div>`).join("")}</div>` : `<div class="empty">还没有照片。先拍一张就行，不用拍得像广告图。</div>`}
+    </section>`;
+
   let imageData = "";
+  let lastAi = null;
   const input = document.querySelector("#photoInput");
   const img = document.querySelector("#previewImg");
-  input.addEventListener("change", async () => { const file = input.files?.[0]; if (!file) return; imageData = await resizeImage(file, 700); img.src = imageData; img.style.display = "block"; });
-  document.querySelector("#savePhotoBtn").addEventListener("click", () => { const food = document.querySelector("#photoFoodInput").value.trim(); const note = document.querySelector("#photoNoteInput").value.trim(); if (!food && !note && !imageData) return showToast("先拍照或写一点内容"); setPhotos([{ id: uid(), date: today(), food, note, imageData }, ...getPhotos()]); showToast("照片记录保存好了"); renderPhoto(); });
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    imageData = await resizeImage(file, 1024);
+    img.src = imageData;
+    img.style.display = "block";
+    document.querySelector("#aiResultPanel").innerHTML = "";
+    lastAi = null;
+  });
+  document.querySelector("#photoMealSegment").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-photomeal]");
+    if (!btn) return;
+    activeMeal = btn.dataset.photomeal;
+    renderPhoto();
+  });
+  const saveInline = () => {
+    const next = {
+      ...getSettings(),
+      aiProxyUrl: document.querySelector("#photoAiProxyUrl").value.trim(),
+      aiClientToken: document.querySelector("#photoAiClientToken").value.trim(),
+      aiDetail: document.querySelector("#photoAiDetail").value || "low"
+    };
+    setSettings(next);
+    showToast("AI 设置保存好了");
+  };
+  document.querySelector("#saveAiSettingsInlineBtn").addEventListener("click", saveInline);
+  document.querySelector("#analyzePhotoBtn").addEventListener("click", async () => {
+    if (!imageData) return showToast("先拍照或选择一张图片");
+    saveInline();
+    const endpoint = document.querySelector("#photoAiProxyUrl").value.trim();
+    const token = document.querySelector("#photoAiClientToken").value.trim();
+    const detail = document.querySelector("#photoAiDetail").value || "low";
+    if (!endpoint) return showToast("先填写 AI 后端地址");
+    if (!token) return showToast("先填写 AI 访问口令");
+    const btn = document.querySelector("#analyzePhotoBtn");
+    const panel = document.querySelector("#aiResultPanel");
+    btn.disabled = true;
+    btn.textContent = "识别中…";
+    panel.innerHTML = `<div class="ai-result-card"><p class="soft-note">正在分析图片。普通单人餐一般十几秒内完成；复杂餐盘会久一点。</p></div>`;
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-App-Token": token },
+        body: JSON.stringify({ image: imageData, meal: activeMeal, detail, preference: getSettings().preference, hint: document.querySelector("#photoHintInput").value.trim() })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || `请求失败：${res.status}`);
+      lastAi = data.result || data.analysis || null;
+      if (!lastAi) throw new Error("AI 没有返回可用结果");
+      const usageRow = recordAiUsage(data);
+      panel.innerHTML = aiResultHtml(lastAi, data, usageRow, imageData);
+      bindAiResultActions(lastAi, imageData);
+      showToast("AI 识别完成，先检查再保存");
+    } catch (err) {
+      panel.innerHTML = `<div class="ai-result-card"><p class="soft-note"><strong>识别失败：</strong>${escapeHtml(err.message || "未知错误")}</p><p class="soft-note">检查：Worker 地址是否正确、访问口令是否一致、OpenAI key 是否已在 Cloudflare Secret 中设置。</p></div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "AI 识别这张图";
+    }
+  });
 }
+function aiResultHtml(result, data, usageRow, imageData) {
+  const foods = Array.isArray(result.foods) && result.foods.length ? result.foods : [];
+  const usage = data.usage || {};
+  const cost = data.cost || {};
+  return `<div class="ai-result-card">
+    <div class="card-title"><h2>识别结果</h2><small>${escapeHtml(data.model || "AI")}</small></div>
+    <p class="advice-text">${escapeHtml(result.summary || "我已经先估算了一版，你可以修改后再保存。")}</p>
+    <div class="ai-cost-grid">
+      <div class="ai-cost-tile"><span>本次费用</span><strong>${aiMoney(cost.total_usd || usageRow.cost_usd)}</strong><small>预估 USD</small></div>
+      <div class="ai-cost-tile"><span>输入 tokens</span><strong>${Number(usage.input_tokens || usage.prompt_tokens || usageRow.input_tokens || 0)}</strong><small>含图片</small></div>
+      <div class="ai-cost-tile"><span>输出 tokens</span><strong>${Number(usage.output_tokens || usage.completion_tokens || usageRow.output_tokens || 0)}</strong><small>分析文字</small></div>
+    </div>
+    <div id="aiFoodRows" style="margin-top:12px">
+      ${foods.map((f, i) => aiFoodRowHtml(f, i)).join("") || `<div class="empty">没有识别出明确食物。可以换高细节再试一次。</div>`}
+    </div>
+    <label style="margin-top:12px">整体备注
+      <input id="aiSaveNote" type="text" value="${escapeAttr(result.reminder || "AI 拍照估算，已人工确认")}" />
+    </label>
+    <div class="ai-mini-actions">
+      <button class="primary-btn" id="confirmAiSaveBtn">确认，保存到今日饮食</button>
+      <button class="secondary-btn" id="addBlankAiFoodBtn">加一项食物</button>
+    </div>
+    <p class="soft-note" style="margin-top:10px">注意：AI 很难准确知道实际克数、油量和酱料。保存前请把明显不对的地方改掉。</p>
+  </div>`;
+}
+function aiFoodRowHtml(f = {}, i = 0) {
+  const category = f.category || classifyFoodName(f.name || "");
+  return `<div class="ai-food-row" data-ai-food-row="${i}">
+    <label>食物<input data-ai-field="name" value="${escapeAttr(f.name || "")}" placeholder="食物名" /></label>
+    <label>份量<input data-ai-field="amount" type="number" min="0" step="0.1" value="${Number(f.amount || f.estimated_amount || 1)}" /></label>
+    <label>单位<input data-ai-field="unit" value="${escapeAttr(f.unit || "份")}" /></label>
+    <label>分类<select data-ai-field="category">${CATEGORY_OPTIONS.map(c => `<option ${c === category ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+    <div class="ai-macro-row" style="grid-column:1/-1">
+      <label>kcal<input data-ai-field="kcal" type="number" min="0" step="1" value="${Math.round(Number(f.kcal || 0))}" /></label>
+      <label>蛋白质 g<input data-ai-field="protein" type="number" min="0" step="0.1" value="${macro(f.protein || 0)}" /></label>
+      <label>碳水 g<input data-ai-field="carbs" type="number" min="0" step="0.1" value="${macro(f.carbs || 0)}" /></label>
+      <label>脂肪 g<input data-ai-field="fat" type="number" min="0" step="0.1" value="${macro(f.fat || 0)}" /></label>
+    </div>
+  </div>`;
+}
+function bindAiResultActions(result, imageData) {
+  document.querySelector("#addBlankAiFoodBtn")?.addEventListener("click", () => {
+    const wrap = document.querySelector("#aiFoodRows");
+    const i = wrap.querySelectorAll("[data-ai-food-row]").length;
+    wrap.insertAdjacentHTML("beforeend", aiFoodRowHtml({ name: "", amount: 1, unit: "份", category: "其他", kcal: 0, protein: 0, carbs: 0, fat: 0 }, i));
+  });
+  document.querySelector("#confirmAiSaveBtn")?.addEventListener("click", () => {
+    const rows = Array.from(document.querySelectorAll("[data-ai-food-row]")).map(row => {
+      const val = field => row.querySelector(`[data-ai-field="${field}"]`)?.value?.trim() || "";
+      return {
+        name: val("name"), amount: Number(val("amount") || 1), unit: val("unit") || "份", category: val("category") || "其他",
+        kcal: Number(val("kcal") || 0), protein: Number(val("protein") || 0), carbs: Number(val("carbs") || 0), fat: Number(val("fat") || 0)
+      };
+    }).filter(x => x.name);
+    if (!rows.length) return showToast("至少保留一项食物");
+    const note = document.querySelector("#aiSaveNote")?.value || "AI 拍照估算";
+    const newLogs = rows.map(f => ({ id: uid(), date: today(), meal: activeMeal, food: f.name, amount: f.amount, unit: f.unit, category: f.category, note, kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat }));
+    setLogs([...newLogs, ...getLogs()]);
+    const total = rows.reduce((acc, f) => { acc.kcal += f.kcal; acc.protein += f.protein; acc.carbs += f.carbs; acc.fat += f.fat; return acc; }, { kcal:0, protein:0, carbs:0, fat:0 });
+    setPhotos([{ id: uid(), date: today(), food: rows.map(x => x.name).join("、"), note, imageData, ai: { ...total, foods: rows } }, ...getPhotos()]);
+    showToast("已保存到今日饮食");
+    page = "home";
+    render();
+  });
+}
+function escapeHtml(text = "") {
+  return String(text).replace(/[&<>'"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[c]));
+}
+function escapeAttr(text = "") { return escapeHtml(text); }
 window.deletePhoto = (id) => { setPhotos(getPhotos().filter(x => x.id !== id)); showToast("已删除照片记录"); render(); };
-function resizeImage(file, maxSize = 700) {
-  return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = reject; reader.onload = () => { const img = new Image(); img.onload = () => { const scale = Math.min(1, maxSize / Math.max(img.width, img.height)); const canvas = document.createElement("canvas"); canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL("image/jpeg", 0.72)); }; img.src = reader.result; }; reader.readAsDataURL(file); });
+function resizeImage(file, maxSize = 1024) {
+  return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = reject; reader.onload = () => { const img = new Image(); img.onload = () => { const scale = Math.min(1, maxSize / Math.max(img.width, img.height)); const canvas = document.createElement("canvas"); canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL("image/jpeg", 0.74)); }; img.onerror = reject; img.src = reader.result; }; reader.readAsDataURL(file); });
 }
 
 function renderLists() {
@@ -1088,6 +1321,9 @@ function initSettingsDialog() {
     document.querySelector("#cycleLengthInput").value = s.cycleLength;
     document.querySelector("#periodLengthInput").value = s.periodLength;
     document.querySelector("#preferenceInput").value = s.preference;
+    document.querySelector("#aiProxyUrlInput").value = s.aiProxyUrl || "";
+    document.querySelector("#aiClientTokenInput").value = s.aiClientToken || "";
+    document.querySelector("#aiDetailInput").value = s.aiDetail || "low";
     document.querySelector("#themeInput").value = s.theme;
     panel.innerHTML = buildColorPanel(s.customColors);
     buildAppearancePanel(s.appearance);
@@ -1129,6 +1365,9 @@ function initSettingsDialog() {
       cycleLength: Number(document.querySelector("#cycleLengthInput").value || 28),
       periodLength: Number(document.querySelector("#periodLengthInput").value || 5),
       preference: document.querySelector("#preferenceInput").value.trim(),
+      aiProxyUrl: document.querySelector("#aiProxyUrlInput").value.trim(),
+      aiClientToken: document.querySelector("#aiClientTokenInput").value.trim(),
+      aiDetail: document.querySelector("#aiDetailInput").value || "low",
       theme,
       customColors: readColorPanel(),
       appearance: readAppearancePanel()
@@ -1140,8 +1379,8 @@ function initSettingsDialog() {
     render();
   });
 }
-function initNav() { document.querySelectorAll(".nav-item").forEach(btn => btn.addEventListener("click", () => { page=btn.dataset.page; window.scrollTo({top:0, behavior:"smooth"}); render(); })); }
-function initPwa() { if("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js?v=61").catch(()=>{}); }
+function initNav() { document.querySelectorAll(".nav-item").forEach(btn => btn.addEventListener("click", () => { page=btn.dataset.page; window.scrollTo({top:0, behavior:"smooth"}); render(); })); document.querySelector("#cameraFab")?.addEventListener("click", () => { page="photo"; window.scrollTo({top:0, behavior:"smooth"}); render(); }); }
+function initPwa() { if("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js?v=70").catch(()=>{}); }
 
 applyTheme(getSettings().theme, getSettings().customColors);
 initNav();

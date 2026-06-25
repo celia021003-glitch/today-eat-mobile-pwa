@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>今天怎么吃</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=62" />
+  <link rel="stylesheet" href="styles.css?v=70" />
 </head>
 <body>
   <div class="phone-shell">
@@ -32,6 +32,8 @@
       <button class="nav-item" data-page="me"><span>✦</span><small>我</small></button>
     </nav>
   </div>
+
+  <button id="cameraFab" class="camera-fab" aria-label="拍照识别">📷</button>
 
   <dialog id="settingsDialog" class="settings-dialog">
     <form method="dialog" class="dialog-card">
@@ -69,6 +71,24 @@
         </div>
         <label>我的饮食偏好
           <textarea id="preferenceInput" rows="3" placeholder="比如：喜欢辣，喜欢热食，减脂但不想极端节食"></textarea>
+        </label>
+      </section>
+
+      <section class="settings-section">
+        <h3>AI 拍照识别</h3>
+        <p class="soft-note">这里填 Cloudflare Worker 后端地址和你自己设置的访问口令。不要把 OpenAI API key 填在这里，也不要上传到 GitHub。</p>
+        <label>AI 后端地址
+          <input id="aiProxyUrlInput" type="url" placeholder="例如：https://your-worker.your-name.workers.dev/analyze-food" />
+        </label>
+        <label>AI 访问口令
+          <input id="aiClientTokenInput" type="password" placeholder="你在 Worker 里设置的 APP_CLIENT_TOKEN" autocomplete="off" />
+        </label>
+        <label>默认图片细节
+          <select id="aiDetailInput">
+            <option value="low">低细节：更省钱，适合普通单人餐</option>
+            <option value="high">高细节：更仔细，适合火锅/拼盘/多菜</option>
+            <option value="auto">自动：让模型自己判断</option>
+          </select>
         </label>
       </section>
 
@@ -152,6 +172,6 @@
 
   <div id="toast" class="toast" role="status"></div>
 
-  <script src="app.js?v=62"></script>
+  <script src="app.js?v=70"></script>
 </body>
 </html>

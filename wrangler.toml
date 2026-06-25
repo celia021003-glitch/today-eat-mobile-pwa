@@ -1,0 +1,13 @@
+name = "today-eat-ai-camera"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# OPENAI_API_KEY 和 APP_CLIENT_TOKEN 不要写在这里。
+# 请在 Cloudflare Dashboard 的 Variables and Secrets 中添加为 Secret。
+[vars]
+OPENAI_MODEL = "gpt-4.1-mini"
+# 可选：只允许你的 GitHub Pages 网站访问。先部署成功后再打开也可以。
+# ALLOWED_ORIGIN = "https://celia021003-glitch.github.io"
+# GPT-4.1 mini 当前默认价格，单位：USD / 1M tokens
+INPUT_PRICE_PER_1M = "0.40"
+OUTPUT_PRICE_PER_1M = "1.60"

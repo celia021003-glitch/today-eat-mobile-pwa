@@ -1,9 +1,9 @@
-const CACHE = "today-eat-pwa-v62";
+const CACHE = "today-eat-v70-ai-camera";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=62",
-  "./app.js?v=62",
+  "./styles.css?v=70",
+  "./app.js?v=70",
   "./manifest.webmanifest"
 ];
 
