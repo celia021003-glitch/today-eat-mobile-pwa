@@ -1,17 +1,14 @@
-# 今天怎么吃 v7 · AI 拍照识别版
+# 今天怎么吃 · v7.2
 
-本版本新增：
+本版在 v7 AI 拍照识别基础上，把拍照入口改得更明显：
 
-- 首页悬浮相机按钮
-- 记录页内拍照入口
-- AI 拍照识别食物、份量、热量、蛋白质、碳水、脂肪
-- 保存前可人工修改
-- AI 消耗小账本：本次费用、今日费用、本月费用、tokens
-- Cloudflare Worker 安全代理，不把 OpenAI API key 放进前端代码
+- 底部导航新增「拍照」入口
+- 保留右下角悬浮相机按钮，并加上“拍照”文字提示
+- 首页仍有“打开拍照识别”卡片
+- 记录页也有“用拍照识别这一餐”按钮
+- AI 后端仍然使用 Cloudflare Worker，API key 不放前端
 
-## GitHub Pages 前端需要上传
-
-上传并覆盖这几个文件：
+上传 GitHub 文件：
 
 - index.html
 - styles.css
@@ -19,28 +16,13 @@
 - sw.js
 - manifest.webmanifest
 
-打开：
+更新后访问：
 
-https://celia021003-glitch.github.io/today-eat-mobile-pwa/?v=70
+https://celia021003-glitch.github.io/today-eat-mobile-pwa/?v=72
 
-## Cloudflare Worker 需要部署
 
-把 worker.js 部署到 Cloudflare Workers。
+## v7.2 更新
 
-然后在 Worker 的 Settings / Variables and Secrets 里添加：
-
-- OPENAI_API_KEY：你的新 OpenAI API key，必须设为 Secret
-- APP_CLIENT_TOKEN：你自己设置的访问口令，也建议设为 Secret
-- OPENAI_MODEL：gpt-4.1-mini，可选
-- INPUT_PRICE_PER_1M：0.40，可选
-- OUTPUT_PRICE_PER_1M：1.60，可选
-
-部署后，把 Worker 地址填进 App 的“AI 后端地址”，例如：
-
-https://你的-worker.workers.dev/analyze-food
-
-如果 Worker 地址没有路径，直接填根地址也可以，因为本 Worker 对所有 POST 都按识别接口处理。
-
-## 安全提醒
-
-不要把 OpenAI API key 写进 app.js，也不要发到聊天里。之前暴露过的 key 应立即撤销，重新生成。
+- AI 拍照记录页面新增两个明确入口：`📷 现在拍一张` 和 `🖼 从相册选择`。
+- 从相册选择不再使用 `capture`，可以补传已经拍好的饭菜照片。
+- 现场拍照仍然优先调用后置摄像头。

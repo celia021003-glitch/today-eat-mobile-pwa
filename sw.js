@@ -1,9 +1,9 @@
-const CACHE = "today-eat-v70-ai-camera";
+const CACHE = "today-eat-v72-photo-album";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=70",
-  "./app.js?v=70",
+  "./styles.css?v=72",
+  "./app.js?v=72",
   "./manifest.webmanifest"
 ];
 

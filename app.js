@@ -633,13 +633,18 @@ function renderPhoto() {
     <section class="card">
       <div class="card-title"><h2>拍一张饭</h2><small>${activeMeal}</small></div>
       <div class="segmented" id="photoMealSegment">${["早餐", "午餐", "晚餐", "加餐"].map(m => `<button class="${activeMeal === m ? "active" : ""}" data-photomeal="${m}">${m}</button>`).join("")}</div>
-      <label class="photo-drop" for="photoInput" style="margin-top:14px">
+      <div class="photo-drop" style="margin-top:14px">
         <span class="camera">📸</span>
-        <strong>拍照 / 从相册选择</strong>
-        <span class="soft-note">我会先把图片压缩到适合识别的大小，降低费用。</span>
+        <strong>选择这餐的照片</strong>
+        <span class="soft-note">可以现场拍照，也可以从相册补传。图片会先压缩到适合识别的大小，帮你降低费用。</span>
+        <div class="photo-choice-row">
+          <button class="primary-btn" type="button" id="takePhotoBtn">📷 现在拍一张</button>
+          <button class="secondary-btn" type="button" id="chooseAlbumBtn">🖼 从相册选择</button>
+        </div>
         <img id="previewImg" class="photo-preview" style="display:none" alt="照片预览" />
-      </label>
-      <input class="file-input" id="photoInput" type="file" accept="image/*" capture="environment" />
+      </div>
+      <input class="file-input" id="photoCameraInput" type="file" accept="image/*" capture="environment" />
+      <input class="file-input" id="photoAlbumInput" type="file" accept="image/*" />
       <div class="form-grid" style="margin-top:14px">
         <label>AI 后端地址
           <input id="photoAiProxyUrl" type="url" value="${escapeAttr(s.aiProxyUrl || "")}" placeholder="https://你的-worker.workers.dev/analyze-food" />
@@ -677,17 +682,26 @@ function renderPhoto() {
 
   let imageData = "";
   let lastAi = null;
-  const input = document.querySelector("#photoInput");
+  const cameraInput = document.querySelector("#photoCameraInput");
+  const albumInput = document.querySelector("#photoAlbumInput");
   const img = document.querySelector("#previewImg");
-  input.addEventListener("change", async () => {
-    const file = input.files?.[0];
+  const handlePhotoFile = async (file) => {
     if (!file) return;
-    imageData = await resizeImage(file, 1024);
-    img.src = imageData;
-    img.style.display = "block";
-    document.querySelector("#aiResultPanel").innerHTML = "";
-    lastAi = null;
-  });
+    try {
+      imageData = await resizeImage(file, 1024);
+      img.src = imageData;
+      img.style.display = "block";
+      document.querySelector("#aiResultPanel").innerHTML = "";
+      lastAi = null;
+      showToast("图片已选择，可以识别了");
+    } catch (err) {
+      showToast("图片读取失败，换一张试试");
+    }
+  };
+  document.querySelector("#takePhotoBtn")?.addEventListener("click", () => cameraInput.click());
+  document.querySelector("#chooseAlbumBtn")?.addEventListener("click", () => albumInput.click());
+  cameraInput.addEventListener("change", async () => handlePhotoFile(cameraInput.files?.[0]));
+  albumInput.addEventListener("change", async () => handlePhotoFile(albumInput.files?.[0]));
   document.querySelector("#photoMealSegment").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-photomeal]");
     if (!btn) return;
@@ -1380,7 +1394,7 @@ function initSettingsDialog() {
   });
 }
 function initNav() { document.querySelectorAll(".nav-item").forEach(btn => btn.addEventListener("click", () => { page=btn.dataset.page; window.scrollTo({top:0, behavior:"smooth"}); render(); })); document.querySelector("#cameraFab")?.addEventListener("click", () => { page="photo"; window.scrollTo({top:0, behavior:"smooth"}); render(); }); }
-function initPwa() { if("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js?v=70").catch(()=>{}); }
+function initPwa() { if("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js?v=72").catch(()=>{}); }
 
 applyTheme(getSettings().theme, getSettings().customColors);
 initNav();
