@@ -10,7 +10,8 @@ const STORAGE = {
   money: "todayEat.money.v1",
   weight: "todayEat.weight.v1",
   periods: "todayEat.periods.v1",
-  planner: "todayEat.planner.v1"
+  planner: "todayEat.planner.v1",
+  selfNotes: "todayEat.selfNotes.v1"
 };
 
 const THEME_PRESETS = {
@@ -59,8 +60,45 @@ const THEME_PRESETS = {
 const COLOR_FIELDS = [
   ["bg", "背景主色"], ["bg2", "背景渐变"], ["card", "卡片底色"], ["text", "主文字"], ["muted", "次文字"],
   ["pink", "雾粉"], ["sage", "鼠尾草绿"], ["blue", "灰蓝"], ["brown", "豆沙棕"],
-  ["apricot", "浅杏"], ["lav", "雾紫"], ["danger", "提醒色"]
+  ["apricot", "浅杏"], ["lav", "雾紫"], ["danger", "提醒色"], ["decor", "装饰色"]
 ];
+
+const ALPHA_FIELDS = [
+  ["cardAlpha", "卡片透明度", 0.55, 1, 0.01],
+  ["buttonAlpha", "按钮透明度", 0.45, 1, 0.01],
+  ["chipAlpha", "标签透明度", 0.2, 1, 0.01]
+];
+
+const DECOR_ELEMENTS = {
+  flower: { label: "小花", symbol: "✿" },
+  star: { label: "星星", symbol: "✦" },
+  leaf: { label: "叶子", symbol: "🍃" },
+  drop: { label: "水滴", symbol: "💧" },
+  bread: { label: "面包", symbol: "🍞" },
+  milk: { label: "牛奶", symbol: "🥛" },
+  heart: { label: "爱心", symbol: "♡" },
+  dot: { label: "圆点", symbol: "·" },
+  line: { label: "手绘线", symbol: "﹏" },
+  sparkle: { label: "小闪光", symbol: "⋆" },
+  tomato: { label: "番茄", symbol: "🍅" },
+  bowl: { label: "小碗", symbol: "🥗" }
+};
+
+const DECOR_PRESETS = {
+  none: [],
+  journal: ["flower", "star", "leaf", "heart", "line", "sparkle"],
+  food: ["bread", "milk", "drop", "tomato", "bowl", "heart", "dot"],
+  minimal: ["dot", "line", "star"],
+  custom: ["flower", "star", "leaf", "drop"]
+};
+
+const APPEARANCE_DEFAULTS = {
+  font: "system",
+  decorPreset: "journal",
+  decorDensity: "medium",
+  decorOpacity: 0.22,
+  decorElements: ["flower", "star", "leaf", "heart", "line", "sparkle"]
+};
 
 const FOOD_DB = {
   "鸡胸肉": { unit: "g", base: 100, kcal: 165, protein: 31, carbs: 0, fat: 3.6, category: "蛋白质", emoji: "🍗" },
@@ -123,6 +161,7 @@ let selectedMood = "平静";
 let plannerMeal = "晚餐";
 let selectedPantryIds = new Set();
 let longPressTimer = null;
+let activeSelfNoteId = null;
 
 const today = () => new Date().toISOString().slice(0, 10);
 const prettyDate = (dateStr = today()) => dateStr.replaceAll("-", "/");
@@ -151,6 +190,26 @@ function rgba(hex, alpha = 1) {
   return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, Number(alpha)))})`;
 }
 function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
+function normalizeColors(colors = {}) {
+  const base = clone(THEME_PRESETS["morandi-cream"].colors);
+  return {
+    ...base,
+    decor: base.pink,
+    buttonAlpha: 1,
+    chipAlpha: 0.42,
+    ...colors
+  };
+}
+function normalizeAppearance(appearance = {}) {
+  const merged = { ...APPEARANCE_DEFAULTS, ...(appearance || {}) };
+  const presetElements = DECOR_PRESETS[merged.decorPreset] || DECOR_PRESETS.journal;
+  const elements = Array.isArray(merged.decorElements) && merged.decorElements.length ? merged.decorElements : presetElements;
+  return {
+    ...merged,
+    decorElements: elements.filter(key => DECOR_ELEMENTS[key]),
+    decorOpacity: Math.max(0, Math.min(0.65, Number(merged.decorOpacity ?? APPEARANCE_DEFAULTS.decorOpacity)))
+  };
+}
 
 function defaultSettings() {
   return {
@@ -164,11 +223,15 @@ function defaultSettings() {
     cycleLength: 28,
     periodLength: 5,
     theme: "morandi-cream",
-    customColors: clone(THEME_PRESETS["morandi-cream"].colors)
+    customColors: normalizeColors(THEME_PRESETS["morandi-cream"].colors),
+    appearance: normalizeAppearance(APPEARANCE_DEFAULTS)
   };
 }
 function normalizeSettings(s) {
-  return { ...defaultSettings(), ...(s || {}), customColors: { ...clone(THEME_PRESETS["morandi-cream"].colors), ...((s || {}).customColors || {}) } };
+  const merged = { ...defaultSettings(), ...(s || {}) };
+  merged.customColors = normalizeColors((s || {}).customColors || merged.customColors);
+  merged.appearance = normalizeAppearance((s || {}).appearance || merged.appearance);
+  return merged;
 }
 function getSettings() { return normalizeSettings(load(STORAGE.settings, defaultSettings())); }
 function setSettings(s) { save(STORAGE.settings, normalizeSettings(s)); }
@@ -195,6 +258,8 @@ function getPeriods() { return load(STORAGE.periods, []); }
 function setPeriods(v) { save(STORAGE.periods, v); }
 function getPlannerCache() { return load(STORAGE.planner, {}); }
 function setPlannerCache(v) { save(STORAGE.planner, v); }
+function getSelfNotes() { return load(STORAGE.selfNotes, []); }
+function setSelfNotes(v) { save(STORAGE.selfNotes, v); }
 
 function normalizePantryItem(item) {
   const category = item.category || classifyFoodName(item.name);
@@ -220,12 +285,19 @@ function defaultUnitFor(category) {
   return ({ 蛋白质: "份", 蔬菜: "份", 主食: "份", 水果: "个", 饮品: "瓶", 甜食: "份", 外卖: "份", 调味: "瓶", 其他: "份" }[category] || "份");
 }
 
-function applyTheme(themeName = "morandi-cream", customColors = null) {
+function applyTheme(themeName = "morandi-cream", customColors = null, appearanceOverride = null) {
   const s = getSettings();
   const theme = themeName || s.theme || "morandi-cream";
+  const appearance = normalizeAppearance(appearanceOverride || s.appearance);
   document.documentElement.dataset.theme = theme;
-  const colors = theme === "custom" ? (customColors || s.customColors || THEME_PRESETS["morandi-cream"].colors) : THEME_PRESETS[theme]?.colors;
+  document.documentElement.dataset.font = appearance.font;
+  document.documentElement.dataset.decor = appearance.decorPreset;
+  document.documentElement.dataset.decorDensity = appearance.decorDensity;
+
+  const rawColors = theme === "custom" ? (customColors || s.customColors || THEME_PRESETS["morandi-cream"].colors) : THEME_PRESETS[theme]?.colors;
+  const colors = normalizeColors(rawColors);
   if (!colors) return;
+
   const root = document.documentElement.style;
   root.setProperty("--bg", colors.bg);
   root.setProperty("--bg-2", colors.bg2);
@@ -240,6 +312,57 @@ function applyTheme(themeName = "morandi-cream", customColors = null) {
   root.setProperty("--apricot", colors.apricot);
   root.setProperty("--lav", colors.lav);
   root.setProperty("--danger", colors.danger);
+  root.setProperty("--decor-ink", colors.decor || colors.pink);
+  root.setProperty("--decor-opacity", appearance.decorPreset === "none" ? 0 : appearance.decorOpacity);
+
+  root.setProperty("--button-bg", rgba(colors.sage, colors.buttonAlpha ?? 1));
+  root.setProperty("--button-bg-2", rgba(colors.blue, colors.buttonAlpha ?? 1));
+  root.setProperty("--button-soft-bg", rgba(colors.sage, Math.max(0.18, (colors.buttonAlpha ?? 1) * 0.44)));
+
+  const chipAlpha = colors.chipAlpha ?? 0.42;
+  root.setProperty("--chip-sage-bg", rgba(colors.sage, chipAlpha));
+  root.setProperty("--chip-apricot-bg", rgba(colors.apricot, Math.min(1, chipAlpha + 0.06)));
+  root.setProperty("--chip-blue-bg", rgba(colors.blue, chipAlpha));
+  root.setProperty("--chip-pink-bg", rgba(colors.pink, Math.min(1, chipAlpha + 0.03)));
+  root.setProperty("--chip-lav-bg", rgba(colors.lav, chipAlpha));
+
+  renderDecorLayer(appearance);
+}
+
+function renderDecorLayer(appearance = APPEARANCE_DEFAULTS) {
+  document.querySelector(".decor-layer")?.remove();
+  const a = normalizeAppearance(appearance);
+  if (a.decorPreset === "none" || a.decorOpacity <= 0) return;
+
+  const preset = DECOR_PRESETS[a.decorPreset] || [];
+  const elementKeys = a.decorPreset === "custom" ? a.decorElements : Array.from(new Set([...preset, ...(a.decorElements || [])]));
+  const usable = elementKeys.filter(key => DECOR_ELEMENTS[key]);
+  if (!usable.length) return;
+
+  const countMap = { low: 14, medium: 24, high: 38 };
+  const count = countMap[a.decorDensity] || 24;
+  const layer = document.createElement("div");
+  layer.className = "decor-layer";
+  layer.setAttribute("aria-hidden", "true");
+
+  for (let i = 0; i < count; i++) {
+    const key = usable[i % usable.length];
+    const span = document.createElement("span");
+    span.className = "decor-doodle";
+    span.textContent = DECOR_ELEMENTS[key].symbol;
+    const left = (7 + (i * 37) % 88);
+    const top = (5 + (i * 29) % 90);
+    const size = 15 + ((i * 7) % 17);
+    const rotate = -28 + ((i * 23) % 56);
+    span.style.left = `${left}%`;
+    span.style.top = `${top}%`;
+    span.style.fontSize = `${size}px`;
+    span.style.transform = `rotate(${rotate}deg)`;
+    span.style.animationDelay = `${(i % 7) * -0.9}s`;
+    layer.appendChild(span);
+  }
+
+  document.body.prepend(layer);
 }
 
 function calcFood(foodName, amount) {
@@ -262,6 +385,84 @@ function categoryHintText(name = "") {
   const category = classifyFoodName(value);
   return category === "其他" ? `暂时没判断出「${value}」的分类，先归到「其他」。你可以手动选择。` : `我猜「${value}」属于「${category}」。如果不准，手动改一下就好。`;
 }
+
+function isVaguePantryUnit(unit = "") {
+  const text = String(unit || "").trim();
+  return ["袋", "包", "盒", "瓶", "罐", "桶", "箱"].some(x => text.includes(x));
+}
+function pantryConsumeNote(item) {
+  if (!item) return "";
+  if (!isVaguePantryUnit(item.unit)) return "";
+  return `你库存里写的是「${item.qty || 1}${item.unit || "份"}」，不用知道里面到底有几片/几克；按这一餐建议用量拿就好，库存不会自动精确扣。`;
+}
+function normalizeFoodNameForServing(name = "") {
+  return String(name || "").toLowerCase().replace(/\s+/g, "");
+}
+function servingSuggestionFor(item, meal = "晚餐") {
+  const name = item?.name || String(item || "");
+  const category = item?.category || classifyFoodName(name);
+  const unit = item?.unit || "";
+  const text = normalizeFoodNameForServing(name);
+  let amount = "";
+
+  if (text.includes("全麦") || text.includes("黑面包") || text.includes("面包") || text.includes("吐司") || text.includes("贝果")) {
+    amount = meal === "加餐" ? "半片–1片" : meal === "早餐" ? "1–2片" : "1片左右";
+  } else if (text.includes("米饭") || text === "饭" || text.includes("熟米饭")) {
+    amount = meal === "晚餐" ? "半碗" : "半碗–1碗";
+  } else if (text.includes("土豆")) {
+    amount = meal === "晚餐" ? "半个–1个小土豆" : "1个小土豆左右";
+  } else if (text.includes("红薯") || text.includes("紫薯")) {
+    amount = "半个–1个中小个";
+  } else if (text.includes("玉米")) {
+    amount = meal === "晚餐" ? "半根" : "半根–1根";
+  } else if (text.includes("燕麦奶") || text.includes("豆奶") || text.includes("杏仁奶") || text.includes("牛奶")) {
+    amount = "200–250ml，约1杯";
+  } else if (text.includes("鸡蛋") || text === "蛋") {
+    amount = meal === "加餐" ? "1个" : "1–2个";
+  } else if (text.includes("鸡胸") || text.includes("鸡排") || text.includes("牛排") || text.includes("牛肉") || text.includes("三文鱼") || text.includes("鱼") || text.includes("虾")) {
+    amount = "1个手掌大小，约100–150g";
+  } else if (text.includes("鸡腿")) {
+    amount = meal === "晚餐" ? "1个" : "1个左右";
+  } else if (text.includes("豆腐")) {
+    amount = "半盒–1盒，约150–250g";
+  } else if (text.includes("酸奶")) {
+    amount = "100–150g";
+  } else if (text.includes("黄瓜")) {
+    amount = "半根–1根";
+  } else if (text.includes("番茄") || text.includes("西红柿")) {
+    amount = "1个";
+  } else if (text.includes("白菜") || text.includes("青菜") || text.includes("菠菜") || text.includes("西兰花") || text.includes("蘑菇") || category === "蔬菜") {
+    amount = meal === "晚餐" ? "1–2拳，多一点也没关系" : "1拳以上";
+  } else if (text.includes("牛油果")) {
+    amount = "半个左右";
+  } else if (category === "水果") {
+    amount = "1个小份，或一拳大小";
+  } else if (category === "主食") {
+    amount = meal === "晚餐" ? "半份主食" : "半份–1份主食";
+  } else if (category === "蛋白质") {
+    amount = "1份蛋白质，约一个手掌大小";
+  } else if (category === "饮品") {
+    amount = "1杯，约200–250ml";
+  } else if (category === "甜食") {
+    amount = "小份，先别和奶茶叠加";
+  } else if (category === "调味") {
+    amount = "少量，1小勺起步";
+  } else {
+    amount = "少量试着搭配，先别一次吃太多";
+  }
+
+  const note = pantryConsumeNote(item);
+  return {
+    name,
+    category,
+    amount,
+    note,
+    text: `${categoryEmoji(category)} ${name}：${amount}${note ? `。${note}` : ""}`
+  };
+}
+function servingListFor(items, meal) {
+  return items.filter(Boolean).map(item => servingSuggestionFor(item, meal));
+}
 function totalsFor(dateStr = today()) {
   const logs = getLogs().filter(x => x.date === dateStr);
   return logs.reduce((acc, x) => {
@@ -281,14 +482,14 @@ function setTopbar() {
   const h = new Date().getHours();
   const hello = h < 11 ? "早上好" : h < 18 ? "下午好" : "晚上好";
   dateLabel.textContent = `${prettyDate()} · ${hello}`;
-  const names = { home: `${hello}，${s.nickname || "我"}`, log: "记录一餐", photo: "拍一张饭", lists: "我的清单", life: "生活小账本", body: "身体记录", journal: "心情日记" };
+  const names = { home: `${hello}，${s.nickname || "我"}`, log: "记录一餐", photo: "拍一张饭", lists: "我的清单", life: "生活小账本", body: "身体记录", me: "我的小宇宙", journal: "心情日记" };
   greetingTitle.textContent = page === "home" ? (s.appName || names.home) : (names[page] || s.appName || "今天怎么吃");
 }
 function render() {
   applyTheme(getSettings().theme, getSettings().customColors);
   setTopbar();
   document.querySelectorAll(".nav-item").forEach(btn => btn.classList.toggle("active", btn.dataset.page === page));
-  ({ home: renderHome, log: renderLog, photo: renderPhoto, lists: renderLists, life: renderLife, body: renderBody, journal: renderJournal }[page] || renderHome)();
+  ({ home: renderHome, log: renderLog, photo: renderPhoto, lists: renderLists, life: renderLife, body: renderBody, me: renderMe, journal: renderJournal }[page] || renderHome)();
 }
 
 function dailyAdvice(t, s) {
@@ -390,7 +591,9 @@ function pantryHtml(pantry) {
   return `<section class="card"><div class="card-title"><h2>我的小冰箱</h2><small>🧺</small></div><div class="form-grid"><div class="form-row"><label>食材<input id="pantryName" type="text" placeholder="比如：鸡胸肉" /></label><label>分类<select id="pantryCategory">${CATEGORY_OPTIONS.map(c => `<option>${c}</option>`).join("")}</select><small id="categoryHint" class="soft-note">输入食材后，我会先帮你自动判断分类。</small></label></div><div class="form-row"><label>数量<input id="pantryQty" type="number" min="0" step="0.5" value="1" /></label><label>单位<input id="pantryUnit" type="text" placeholder="比如：块/个/袋/瓶" /></label></div><label>过期时间<input id="pantryExpire" type="date" /></label><button class="secondary-btn full" id="addPantryBtn">加入食材清单</button></div></section>${mealPlannerHtml(pantry)}<section class="card"><div class="card-title"><h2>已有食材</h2><small>${pantry.length} 个</small></div>${pantry.length ? `<div class="list-stack">${pantry.map(pantryItemHtml).join("")}</div>` : `<div class="empty">把你买的鸡胸肉、燕麦奶、鸡蛋、青菜都记在这里。之后它会帮你拼饭。</div>`}</section>`;
 }
 function pantryItemHtml(p) {
-  return `<div class="list-item"><div><strong>${categoryEmoji(p.category)} ${p.name}</strong><small>${p.category} · ${p.qty}${p.unit}${p.expire ? ` · 到期 ${prettyDate(p.expire)}` : ""}</small></div><div class="item-actions"><button class="mini-btn" onclick="changePantryQty('${p.id}', -1)">－</button><span class="qty-pill">${p.qty}${p.unit}</span><button class="mini-btn" onclick="changePantryQty('${p.id}', 1)">＋</button><button class="mini-btn" onclick="useUpPantry('${p.id}')">用完</button><button class="delete-btn" onclick="deletePantry('${p.id}')">×</button></div></div>`;
+  const serving = servingSuggestionFor(p, plannerMeal);
+  const fuzzy = isVaguePantryUnit(p.unit) ? `<small class="serving-note">建议用量：${serving.amount}。包装数量不清楚也没关系，按餐取用，不自动扣整${p.unit}。</small>` : `<small class="serving-note">建议用量：${serving.amount}</small>`;
+  return `<div class="list-item"><div><strong>${categoryEmoji(p.category)} ${p.name}</strong><small>${p.category} · ${p.qty}${p.unit}${p.expire ? ` · 到期 ${prettyDate(p.expire)}` : ""}</small>${fuzzy}</div><div class="item-actions"><button class="mini-btn" onclick="changePantryQty('${p.id}', -1)">－</button><span class="qty-pill">${p.qty}${p.unit}</span><button class="mini-btn" onclick="changePantryQty('${p.id}', 1)">＋</button><button class="mini-btn" onclick="useUpPantry('${p.id}')">用完</button><button class="delete-btn" onclick="deletePantry('${p.id}')">×</button></div></div>`;
 }
 function mealPlannerHtml(pantry) {
   const cache = getPlannerCache();
@@ -398,7 +601,13 @@ function mealPlannerHtml(pantry) {
   return `<section class="card"><div class="card-title"><h2>智能搭配</h2><small>🍽️</small></div><div class="segmented" id="plannerMealSegment">${["早餐", "午餐", "晚餐", "加餐"].map(m => `<button class="${plannerMeal === m ? "active" : ""}" data-planmeal="${m}">${m}</button>`).join("")}</div><div class="form-grid" style="margin-top:12px"><label>我想吃的食材/菜名，可填冰箱外的<input id="plannerCraving" type="text" value="${cache.craving || ""}" placeholder="比如：三文鱼 / 番茄牛腩 / 牛油果吐司" /></label><div><p class="soft-note" style="margin:0 0 8px">从小冰箱选择要搭配的食材：</p><div class="chip-row">${pantry.length ? pantry.map(p => `<button class="selectable-chip ${selectedPantryIds.has(p.id) ? "active" : ""}" data-pantrypick="${p.id}">${categoryEmoji(p.category)} ${p.name}</button>`).join("") : `<span class="soft-note">小冰箱还没有食材。</span>`}</div></div><button class="primary-btn full" id="generateMealBtn">帮我搭配这一餐</button></div><div id="plannerResult" style="margin-top:14px">${cache.result ? plannerResultHtml(cache.result, selected) : ""}</div></section>`;
 }
 function plannerResultHtml(result, selected) {
-  return `<div class="planner-result"><h3>${result.title}</h3><p class="advice-text">${result.summary}</p><p class="soft-note"><strong>已有：</strong>${result.used.length ? result.used.join("、") : "暂时没有选中冰箱食材"}</p><p class="soft-note"><strong>建议补充：</strong>${result.missing.length ? result.missing.join("、") : "这顿结构已经比较完整"}</p><div class="tag-row"><span class="tag sage">${result.balance}</span><span class="tag blue">${result.reminder}</span></div>${selected.length ? `<button class="secondary-btn full" style="margin-top:12px" id="consumeSelectedBtn">我用了这些小冰箱食材</button>` : ""}</div>`;
+  const servingHtml = result.servings?.length
+    ? `<div class="serving-box"><h4>建议用量</h4><div class="serving-list">${result.servings.map(s => `<div class="serving-item"><strong>${s.name}</strong><span>${s.amount}</span>${s.note ? `<small>${s.note}</small>` : ""}</div>`).join("")}</div></div>`
+    : "";
+  const manualHtml = result.manualConsume?.length
+    ? `<p class="soft-note"><strong>库存提醒：</strong>${result.manualConsume.join("、")} 是包装/模糊单位，我不会自动扣掉整袋或整瓶；吃完后你可以手动点减号、用完，或者下次改成更好估的单位。</p>`
+    : "";
+  return `<div class="planner-result"><h3>${result.title}</h3><p class="advice-text">${result.summary}</p>${servingHtml}<p class="soft-note"><strong>已有：</strong>${result.used.length ? result.used.join("、") : "暂时没有选中冰箱食材"}</p><p class="soft-note"><strong>建议补充：</strong>${result.missing.length ? result.missing.join("、") : "这顿结构已经比较完整"}</p>${manualHtml}<div class="tag-row"><span class="tag sage">${result.balance}</span><span class="tag blue">${result.reminder}</span></div>${selected.length ? `<button class="secondary-btn full" style="margin-top:12px" id="consumeSelectedBtn">我用了这些小冰箱食材</button>` : ""}</div>`;
 }
 function bindPantry() {
   const nameInput = document.querySelector("#pantryName"); const categorySelect = document.querySelector("#pantryCategory"); const hint = document.querySelector("#categoryHint"); const unitInput = document.querySelector("#pantryUnit");
@@ -420,8 +629,9 @@ function bindPlanner() {
 }
 function buildMealPlan(meal, selected, craving = "") {
   const all = [...selected];
-  if (craving) all.push({ name: craving, category: classifyFoodName(craving), temporary: true });
-  const by = cat => all.filter(x => x.category === cat).map(x => x.name);
+  if (craving) all.push({ name: craving, category: classifyFoodName(craving), temporary: true, unit: "", qty: "" });
+  const byItems = cat => all.filter(x => x.category === cat);
+  const by = cat => byItems(cat).map(x => x.name);
   const proteins = by("蛋白质"), vegs = by("蔬菜"), carbs = by("主食"), fruits = by("水果"), drinks = by("饮品");
   const missing = [];
   if (!proteins.length && !["加餐"].includes(meal)) missing.push("一个蛋白质：鸡蛋/鸡胸肉/牛肉/豆腐");
@@ -435,11 +645,31 @@ function buildMealPlan(meal, selected, craving = "") {
   else if (meal === "晚餐") combo = `${proteins[0] || "蛋白质"} + ${vegs.slice(0,2).join("、") || "蔬菜"}${carbs[0] ? ` + 少量${carbs[0]}` : ""}`;
   else combo = `${fruits[0] || drinks[0] || "水果/饮品"} + ${proteins[0] || "一点蛋白质"}`;
   if (craving) combo = `${craving} 的减脂搭配：${combo}`;
-  return { title: `${meal}建议`, summary: `${combo}。${temp} 这顿重点是别只吃单一食材，尽量有蛋白质、蔬菜和适量主食。`, used, missing, balance: "结构：蛋白质 + 蔬菜 + 适量主食", reminder: meal === "晚餐" ? "晚餐清爽一点更稳" : "不用追求完美，能执行更重要" };
+  const servings = servingListFor(all, meal);
+  const manualConsume = selected.filter(x => isVaguePantryUnit(x.unit)).map(x => `${x.name}（${x.qty}${x.unit}）`);
+  return {
+    title: `${meal}建议`,
+    summary: `${combo}。${temp} 这顿重点是别只吃单一食材，尽量有蛋白质、蔬菜和适量主食。`,
+    used,
+    missing,
+    servings,
+    manualConsume,
+    balance: "结构：蛋白质 + 蔬菜 + 适量主食",
+    reminder: meal === "晚餐" ? "晚餐清爽一点更稳" : "不用追求完美，能执行更重要"
+  };
 }
 function consumeSelectedPantry() {
-  const pantry = getPantry().map(item => selectedPantryIds.has(item.id) ? { ...item, qty: Math.max(0, Number(item.qty || 0) - 1) } : item).filter(x => x.qty > 0);
-  setPantry(pantry); selectedPantryIds = new Set([...selectedPantryIds].filter(id => pantry.some(p => p.id === id))); showToast("已消耗选中的食材"); renderLists();
+  const before = getPantry();
+  const manual = before.filter(item => selectedPantryIds.has(item.id) && isVaguePantryUnit(item.unit));
+  const pantry = before.map(item => {
+    if (!selectedPantryIds.has(item.id)) return item;
+    if (isVaguePantryUnit(item.unit)) return item;
+    return { ...item, qty: Math.max(0, Number(item.qty || 0) - 1) };
+  }).filter(x => Number(x.qty || 0) > 0);
+  setPantry(pantry);
+  selectedPantryIds = new Set([...selectedPantryIds].filter(id => pantry.some(p => p.id === id)));
+  showToast(manual.length ? `已扣减可计数食材；${manual.map(x => x.name).join("、")} 是包装单位，先不自动扣` : "已消耗选中的食材");
+  renderLists();
 }
 function cravingsHtml(cravings) {
   return `<section class="card"><div class="card-title"><h2>最近想吃</h2><small>🌶️</small></div><div class="form-grid"><label>我想吃/喝<input id="cravingName" type="text" placeholder="比如：奶茶、麻辣烫、火锅" /></label><label>想吃程度<select id="cravingLevel"><option>有点想</option><option>很想</option><option>非常想</option></select></label><button class="secondary-btn full" id="addCravingBtn">加入想吃清单</button></div></section><section class="card"><div class="card-title"><h2>愿望小卡片</h2><small>${cravings.length} 个</small></div>${cravings.length ? `<div class="list-stack">${cravings.map(c => `<div class="list-item"><div><strong>${cravingEmoji(c.name)} ${c.name}</strong><small>${c.level} · ${cravingAdvice(c.name)}</small></div><button class="delete-btn" onclick="deleteCraving('${c.id}')">×</button></div>`).join("")}</div>` : `<div class="empty">想吃什么也可以记下来。不是禁止你吃，是帮你换一个更稳的版本。</div>`}</section>`;
@@ -522,19 +752,395 @@ function renderJournal() {
 window.deleteMood = id => { setMoods(getMoods().filter(x => x.id !== id)); showToast("已删除日记"); render(); };
 function moodAdvice(mood, appetite) { const heavy=["焦虑","累","委屈","暴躁"].includes(mood); const crave=["想吃甜","想吃辣","想暴食","很馋"].includes(appetite); if(heavy&&crave) return "你今天不是没自制力，是状态有点满。先吃一顿热的、有蛋白质的，再决定要不要吃甜食或外卖，会比直接硬扛稳。"; if(appetite==="想吃甜") return "甜的可以留一点位置，但别空腹吃。先吃正餐，再吃小份甜，会更容易停下来。"; if(appetite==="想吃辣") return "想吃辣可以，不必完全压住。把辣放在蛋白质和蔬菜上，少油少酱就好。"; if(mood==="累") return "累的时候别把晚餐做得太复杂。热汤、鸡蛋、豆腐、青菜，这种简单组合就很够。"; return "今天就照顾好一餐。减脂不用靠完美，靠的是明天还能继续。"; }
 
-function buildColorPanel(colors) { return COLOR_FIELDS.map(([key,label]) => `<div class="color-row"><span>${label}</span><input type="color" data-color-key="${key}" value="${colors[key] || "#ffffff"}" /><span></span></div>`).join("") + `<div class="color-row"><span>卡片透明度</span><input type="range" min="0.55" max="1" step="0.01" data-alpha-key="cardAlpha" value="${colors.cardAlpha ?? 0.9}" /><span class="alpha">${Math.round((colors.cardAlpha ?? 0.9)*100)}%</span></div>`; }
-function readColorPanel() { const colors = {}; document.querySelectorAll("[data-color-key]").forEach(i => colors[i.dataset.colorKey]=i.value); const alpha=document.querySelector("[data-alpha-key='cardAlpha']"); colors.cardAlpha = Number(alpha?.value || 0.9); return colors; }
-function initSettingsDialog() {
-  const dialog = document.querySelector("#settingsDialog"); const btn = document.querySelector("#settingsBtn"); const panel = document.querySelector("#customColorPanel");
-  const open = () => { const s=getSettings(); document.querySelector("#appNameInput").value=s.appName; document.querySelector("#nicknameInput").value=s.nickname; document.querySelector("#calorieTargetInput").value=s.calorieTarget; document.querySelector("#proteinTargetInput").value=s.proteinTarget; document.querySelector("#waterTargetInput").value=s.waterTarget; document.querySelector("#weightTargetInput").value=s.weightTarget; document.querySelector("#cycleLengthInput").value=s.cycleLength; document.querySelector("#periodLengthInput").value=s.periodLength; document.querySelector("#preferenceInput").value=s.preference; document.querySelector("#themeInput").value=s.theme; panel.innerHTML = buildColorPanel(s.customColors); bindColorPanel(); dialog.showModal(); };
-  btn.addEventListener("click", open);
-  document.querySelector("#themeInput").addEventListener("change", e => { const theme=e.target.value; if(theme!=="custom") { const colors=clone(THEME_PRESETS[theme]?.colors || THEME_PRESETS["morandi-cream"].colors); panel.innerHTML = buildColorPanel(colors); bindColorPanel(); applyTheme(theme, colors); } else { applyTheme("custom", readColorPanel()); } });
-  document.querySelector("#resetThemeBtn").addEventListener("click", () => { const theme=document.querySelector("#themeInput").value === "custom" ? "morandi-cream" : document.querySelector("#themeInput").value; const colors=clone(THEME_PRESETS[theme]?.colors || THEME_PRESETS["morandi-cream"].colors); panel.innerHTML=buildColorPanel(colors); bindColorPanel(); applyTheme(theme, colors); });
-  document.querySelector("#saveSettingsBtn").addEventListener("click", e => { e.preventDefault(); const theme=document.querySelector("#themeInput").value; const next={ ...getSettings(), appName:document.querySelector("#appNameInput").value.trim() || "今天怎么吃", nickname:document.querySelector("#nicknameInput").value.trim() || "我", calorieTarget:Number(document.querySelector("#calorieTargetInput").value||1600), proteinTarget:Number(document.querySelector("#proteinTargetInput").value||80), waterTarget:Number(document.querySelector("#waterTargetInput").value||8), weightTarget:document.querySelector("#weightTargetInput").value, cycleLength:Number(document.querySelector("#cycleLengthInput").value||28), periodLength:Number(document.querySelector("#periodLengthInput").value||5), preference:document.querySelector("#preferenceInput").value.trim(), theme, customColors:readColorPanel() }; setSettings(next); applyTheme(next.theme,next.customColors); dialog.close(); showToast("设置保存好了"); render(); });
+
+
+function safeText(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
-function bindColorPanel() { document.querySelectorAll("[data-color-key], [data-alpha-key]").forEach(input => input.addEventListener("input", () => { document.querySelector("#themeInput").value="custom"; document.querySelectorAll(".alpha").forEach(a => a.textContent = `${Math.round(Number(document.querySelector("[data-alpha-key='cardAlpha']").value)*100)}%`); applyTheme("custom", readColorPanel()); })); }
+function stripHtml(html = "") {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  return (div.textContent || div.innerText || "").trim();
+}
+function selfMoodEmoji(mood = "") {
+  return ({ 完成: "🌟", 触动: "🫧", 得到: "🪐", 自洽: "🌙", 混乱: "🌫️", 秘密: "🔮" }[mood] || "✦");
+}
+function randomMemoryPosition() {
+  return {
+    x: Math.round(6 + Math.random() * 58),
+    y: Math.round(10 + Math.random() * 70),
+    r: Math.round(-9 + Math.random() * 18),
+    scale: Number((0.92 + Math.random() * 0.22).toFixed(2))
+  };
+}
+function insertHtmlAtCursor(html) {
+  document.querySelector("#selfEditor")?.focus();
+  document.execCommand("insertHTML", false, html);
+}
+function selfCommand(command, value = null) {
+  document.querySelector("#selfEditor")?.focus();
+  document.execCommand(command, false, value);
+}
+function selfHighlight(color) {
+  document.querySelector("#selfEditor")?.focus();
+  document.execCommand("backColor", false, color);
+}
+function selfFont(name) {
+  document.querySelector("#selfEditor")?.focus();
+  document.execCommand("fontName", false, name);
+}
+function selfFontSize(size) {
+  document.querySelector("#selfEditor")?.focus();
+  document.execCommand("fontSize", false, size);
+}
+function addSelfAnnotation() {
+  const text = prompt("写一句批注：");
+  if (!text) return;
+  const selected = String(window.getSelection()?.toString() || "").trim();
+  const label = selected ? safeText(selected) : "批注";
+  insertHtmlAtCursor(`<span class="self-annotation" title="${safeText(text)}">${label}<sup>✧</sup></span>`);
+}
+function selectedSelfItems() {
+  return [...document.querySelectorAll("[data-self-pantry]:checked")].map(i => i.value);
+}
+function renderMe() {
+  const notes = getSelfNotes();
+  const active = notes.find(n => n.id === activeSelfNoteId) || notes[0];
+  if (!activeSelfNoteId && active) activeSelfNoteId = active.id;
+  app.innerHTML = `
+    <div class="self-page">
+      <section class="card self-gate">
+        <div class="self-orbit-title">
+          <div>
+            <p class="date-label">只属于你的秘密入口</p>
+            <h2>我 · 小宇宙</h2>
+          </div>
+          <span style="font-size:34px">🔮</span>
+        </div>
+        <p class="soft-note">这里不是任务，也不是打卡。这里是你和自己说话的地方。完成了什么、被什么触动、得到了什么，都可以变成一颗散落的小星星。</p>
+      </section>
+
+      <section class="card self-gate">
+        <div class="card-title"><h2>写一片记忆</h2><small>荧光笔 · 图片 · 批注</small></div>
+        <div class="self-meta-grid">
+          <label>这一片记忆的名字
+            <input id="selfTitle" type="text" placeholder="比如：今天我终于没有责怪自己" />
+          </label>
+          <label>类型
+            <select id="selfMood">
+              <option>完成</option><option>触动</option><option>得到</option><option>自洽</option><option>混乱</option><option>秘密</option>
+            </select>
+          </label>
+          <label>标签
+            <input id="selfTags" type="text" placeholder="比如：学习、身体、关系、勇气" />
+          </label>
+        </div>
+        <div class="self-toolbar" aria-label="手帐工具栏">
+          <button type="button" data-self-cmd="bold"><b>B</b></button>
+          <button type="button" data-self-cmd="italic"><i>I</i></button>
+          <button type="button" data-self-cmd="underline"><u>U</u></button>
+          <button type="button" data-highlight="#FFF1A8">荧光黄</button>
+          <button type="button" data-highlight="#F6D5DB">雾粉笔</button>
+          <button type="button" data-highlight="#DCE8D7">叶子绿</button>
+          <button type="button" id="selfAnnotateBtn">批注</button>
+          <select id="selfFontSelect" title="字体">
+            <option value="-apple-system">默认</option>
+            <option value="Kaiti SC">文楷</option>
+            <option value="Songti SC">宋体</option>
+            <option value="Avenir Next">高级</option>
+            <option value="Arial Rounded MT Bold">圆润</option>
+          </select>
+          <select id="selfSizeSelect" title="字号">
+            <option value="2">小</option><option value="3" selected>正文</option><option value="4">大</option><option value="5">标题</option>
+          </select>
+          <label>文字色 <input id="selfTextColor" type="color" value="#4B4642" /></label>
+          <button type="button" id="selfImageBtn">插入图片</button>
+        </div>
+        <input id="selfImageInput" type="file" accept="image/*" class="file-input" />
+        <div id="selfEditor" class="self-editor" contenteditable="true"></div>
+        <div class="settings-actions" style="margin-top:12px">
+          <button type="button" class="ghost-btn" id="clearSelfEditorBtn">清空</button>
+          <button type="button" class="primary-btn" id="saveSelfNoteBtn">保存成星星</button>
+        </div>
+      </section>
+
+      <section class="card self-gate">
+        <div class="card-title"><h2>记忆宇宙</h2><small>${notes.length} 颗星</small></div>
+        <div class="self-universe">
+          ${notes.length ? notes.map(memoryStarHtml).join("") : `<div class="secret-empty"><div><strong>这里还没有星星</strong><span>写下第一片记忆，它会随机落在这里。</span></div></div>`}
+        </div>
+      </section>
+
+      ${active ? selfDetailHtml(active) : ""}
+    </div>
+  `;
+  bindSelfEditor();
+}
+function memoryStarHtml(note) {
+  const p = note.position || randomMemoryPosition();
+  const text = stripHtml(note.content).slice(0, 38) || "一片没有解释的记忆";
+  return `<button class="memory-star" style="left:${p.x}%; top:${p.y}%; rotate:${p.r}deg; scale:${p.scale || 1}" onclick="openSelfNote('${note.id}')">
+    <strong>${safeText(note.title || text || "未命名记忆")}</strong>
+    <small>${prettyDate(note.date || today())}</small>
+    <span class="mood-dot">${selfMoodEmoji(note.mood)} ${safeText(note.mood || "秘密")}</span>
+  </button>`;
+}
+function selfDetailHtml(note) {
+  return `<section class="card self-gate">
+    <div class="self-detail">
+      <div class="card-title">
+        <div><h2>${selfMoodEmoji(note.mood)} ${safeText(note.title || "未命名记忆")}</h2><small>${prettyDate(note.date || today())} · ${safeText(note.tags || "没有标签")}</small></div>
+        <button class="delete-btn" onclick="deleteSelfNote('${note.id}')">×</button>
+      </div>
+      <div class="self-detail-content">${note.content || ""}</div>
+    </div>
+  </section>`;
+}
+function bindSelfEditor() {
+  document.querySelectorAll("[data-self-cmd]").forEach(btn => btn.addEventListener("click", () => selfCommand(btn.dataset.selfCmd)));
+  document.querySelectorAll("[data-highlight]").forEach(btn => btn.addEventListener("click", () => selfHighlight(btn.dataset.highlight)));
+  document.querySelector("#selfAnnotateBtn")?.addEventListener("click", addSelfAnnotation);
+  document.querySelector("#selfFontSelect")?.addEventListener("change", e => selfFont(e.target.value));
+  document.querySelector("#selfSizeSelect")?.addEventListener("change", e => selfFontSize(e.target.value));
+  document.querySelector("#selfTextColor")?.addEventListener("input", e => selfCommand("foreColor", e.target.value));
+  document.querySelector("#selfImageBtn")?.addEventListener("click", () => document.querySelector("#selfImageInput")?.click());
+  document.querySelector("#selfImageInput")?.addEventListener("change", async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const data = await resizeImage(file, 900);
+    insertHtmlAtCursor(`<img src="${data}" alt="手帐图片" />`);
+    e.target.value = "";
+  });
+  document.querySelector("#clearSelfEditorBtn")?.addEventListener("click", () => {
+    document.querySelector("#selfTitle").value = "";
+    document.querySelector("#selfTags").value = "";
+    document.querySelector("#selfEditor").innerHTML = "";
+  });
+  document.querySelector("#saveSelfNoteBtn")?.addEventListener("click", () => {
+    const title = document.querySelector("#selfTitle").value.trim();
+    const mood = document.querySelector("#selfMood").value;
+    const tags = document.querySelector("#selfTags").value.trim();
+    const content = document.querySelector("#selfEditor").innerHTML.trim();
+    if (!title && !stripHtml(content)) return showToast("先写一点属于你的东西");
+    const note = { id: uid(), date: today(), title, mood, tags, content, position: randomMemoryPosition() };
+    setSelfNotes([note, ...getSelfNotes()]);
+    activeSelfNoteId = note.id;
+    showToast("这片记忆已经变成星星了");
+    renderMe();
+  });
+}
+window.openSelfNote = (id) => { activeSelfNoteId = id; renderMe(); };
+window.deleteSelfNote = (id) => {
+  if (!confirm("要把这颗记忆星星移走吗？")) return;
+  setSelfNotes(getSelfNotes().filter(n => n.id !== id));
+  if (activeSelfNoteId === id) activeSelfNoteId = null;
+  showToast("已经移走了");
+  renderMe();
+};
+
+function buildColorPanel(colors) {
+  const c = normalizeColors(colors);
+  const eyedropperSupported = "EyeDropper" in window;
+  const colorRows = COLOR_FIELDS.map(([key, label]) => `
+    <div class="color-row">
+      <span>${label}</span>
+      <input type="color" data-color-key="${key}" value="${c[key] || "#ffffff"}" aria-label="${label}" />
+      <button type="button" class="eyedropper-btn" data-eye-key="${key}" ${eyedropperSupported ? "" : "disabled"} title="${eyedropperSupported ? "从屏幕吸取颜色" : "这个浏览器暂不支持吸色"}">吸色</button>
+      <code>${c[key] || "#ffffff"}</code>
+    </div>
+  `).join("");
+
+  const alphaRows = ALPHA_FIELDS.map(([key, label, min, max, step]) => `
+    <div class="color-row alpha-row">
+      <span>${label}</span>
+      <input type="range" min="${min}" max="${max}" step="${step}" data-alpha-key="${key}" value="${c[key] ?? (key === "cardAlpha" ? 0.9 : 1)}" />
+      <span class="alpha" data-alpha-label="${key}">${Math.round(Number(c[key] ?? (key === "cardAlpha" ? 0.9 : 1)) * 100)}%</span>
+    </div>
+  `).join("");
+
+  return `
+    <div class="color-panel-head">
+      <strong>自由取色</strong>
+      <small>点色块会打开色环/色卡；Chrome 等浏览器可用“吸色”。</small>
+    </div>
+    ${colorRows}
+    <div class="color-panel-head compact-head">
+      <strong>透明度</strong>
+      <small>调卡片、按钮和标签的雾感。</small>
+    </div>
+    ${alphaRows}
+  `;
+}
+function readColorPanel() {
+  const colors = {};
+  document.querySelectorAll("[data-color-key]").forEach(i => colors[i.dataset.colorKey] = i.value);
+  document.querySelectorAll("[data-alpha-key]").forEach(i => colors[i.dataset.alphaKey] = Number(i.value));
+  return normalizeColors(colors);
+}
+function buildAppearancePanel(appearance) {
+  const a = normalizeAppearance(appearance);
+  const boxes = Object.entries(DECOR_ELEMENTS).map(([key, item]) => `
+    <label class="decor-toggle ${a.decorElements.includes(key) ? "checked" : ""}">
+      <input type="checkbox" data-decor-element="${key}" ${a.decorElements.includes(key) ? "checked" : ""} />
+      <span>${item.symbol}</span>
+      <small>${item.label}</small>
+    </label>
+  `).join("");
+  document.querySelector("#fontStyleInput").value = a.font;
+  document.querySelector("#decorPresetInput").value = a.decorPreset;
+  document.querySelector("#decorDensityInput").value = a.decorDensity;
+  document.querySelector("#decorOpacityInput").value = a.decorOpacity;
+  document.querySelector("#decorOpacityLabel").textContent = `${Math.round(a.decorOpacity * 100)}%`;
+  document.querySelector("#decorElementsPanel").innerHTML = boxes;
+}
+function readAppearancePanel() {
+  const elements = [...document.querySelectorAll("[data-decor-element]:checked")].map(i => i.dataset.decorElement);
+  return normalizeAppearance({
+    font: document.querySelector("#fontStyleInput")?.value || "system",
+    decorPreset: document.querySelector("#decorPresetInput")?.value || "journal",
+    decorDensity: document.querySelector("#decorDensityInput")?.value || "medium",
+    decorOpacity: Number(document.querySelector("#decorOpacityInput")?.value ?? 0.22),
+    decorElements: elements
+  });
+}
+function updateAlphaLabels() {
+  document.querySelectorAll("[data-alpha-key]").forEach(input => {
+    const label = document.querySelector(`[data-alpha-label='${input.dataset.alphaKey}']`);
+    if (label) label.textContent = `${Math.round(Number(input.value) * 100)}%`;
+  });
+  const decorLabel = document.querySelector("#decorOpacityLabel");
+  const decorInput = document.querySelector("#decorOpacityInput");
+  if (decorLabel && decorInput) decorLabel.textContent = `${Math.round(Number(decorInput.value) * 100)}%`;
+}
+function previewAppearance({ forceCustom = false } = {}) {
+  const themeInput = document.querySelector("#themeInput");
+  if (forceCustom) themeInput.value = "custom";
+  updateAlphaLabels();
+  applyTheme(themeInput.value, readColorPanel(), readAppearancePanel());
+  document.querySelectorAll(".decor-toggle").forEach(label => {
+    const input = label.querySelector("input");
+    label.classList.toggle("checked", input.checked);
+  });
+}
+async function pickColorFor(key) {
+  if (!("EyeDropper" in window)) return showToast("这个浏览器暂不支持吸色，可以直接点色块选颜色");
+  try {
+    const result = await new EyeDropper().open();
+    const input = document.querySelector(`[data-color-key='${key}']`);
+    if (input && result?.sRGBHex) {
+      input.value = result.sRGBHex;
+      previewAppearance({ forceCustom: true });
+    }
+  } catch (_) {}
+}
+function bindColorPanel() {
+  document.querySelectorAll("[data-color-key], [data-alpha-key]").forEach(input => {
+    input.addEventListener("input", () => previewAppearance({ forceCustom: true }));
+  });
+  document.querySelectorAll("[data-eye-key]").forEach(btn => {
+    btn.addEventListener("click", () => pickColorFor(btn.dataset.eyeKey));
+  });
+  document.querySelectorAll("[data-color-key]").forEach(input => {
+    input.addEventListener("input", () => {
+      const code = input.closest(".color-row")?.querySelector("code");
+      if (code) code.textContent = input.value;
+    });
+  });
+}
+function bindAppearancePanel() {
+  ["#fontStyleInput", "#decorPresetInput", "#decorDensityInput", "#decorOpacityInput"].forEach(sel => {
+    document.querySelector(sel)?.addEventListener("input", () => {
+      if (sel === "#decorPresetInput") {
+        const preset = document.querySelector("#decorPresetInput").value;
+        const current = readAppearancePanel();
+        const next = normalizeAppearance({ ...current, decorPreset: preset, decorElements: DECOR_PRESETS[preset] || current.decorElements });
+        buildAppearancePanel(next);
+        bindAppearancePanel();
+      }
+      previewAppearance();
+    });
+  });
+  document.querySelectorAll("[data-decor-element]").forEach(input => {
+    input.addEventListener("change", () => {
+      document.querySelector("#decorPresetInput").value = "custom";
+      previewAppearance();
+    });
+  });
+}
+function initSettingsDialog() {
+  const dialog = document.querySelector("#settingsDialog");
+  const btn = document.querySelector("#settingsBtn");
+  const panel = document.querySelector("#customColorPanel");
+  const open = () => {
+    const s = getSettings();
+    document.querySelector("#appNameInput").value = s.appName;
+    document.querySelector("#nicknameInput").value = s.nickname;
+    document.querySelector("#calorieTargetInput").value = s.calorieTarget;
+    document.querySelector("#proteinTargetInput").value = s.proteinTarget;
+    document.querySelector("#waterTargetInput").value = s.waterTarget;
+    document.querySelector("#weightTargetInput").value = s.weightTarget;
+    document.querySelector("#cycleLengthInput").value = s.cycleLength;
+    document.querySelector("#periodLengthInput").value = s.periodLength;
+    document.querySelector("#preferenceInput").value = s.preference;
+    document.querySelector("#themeInput").value = s.theme;
+    panel.innerHTML = buildColorPanel(s.customColors);
+    buildAppearancePanel(s.appearance);
+    bindColorPanel();
+    bindAppearancePanel();
+    updateAlphaLabels();
+    dialog.showModal();
+  };
+  btn.addEventListener("click", open);
+  document.querySelector("#themeInput").addEventListener("change", e => {
+    const theme = e.target.value;
+    if (theme !== "custom") {
+      const colors = normalizeColors(THEME_PRESETS[theme]?.colors || THEME_PRESETS["morandi-cream"].colors);
+      panel.innerHTML = buildColorPanel(colors);
+      bindColorPanel();
+      applyTheme(theme, colors, readAppearancePanel());
+    } else {
+      applyTheme("custom", readColorPanel(), readAppearancePanel());
+    }
+  });
+  document.querySelector("#resetThemeBtn").addEventListener("click", () => {
+    const theme = document.querySelector("#themeInput").value === "custom" ? "morandi-cream" : document.querySelector("#themeInput").value;
+    const colors = normalizeColors(THEME_PRESETS[theme]?.colors || THEME_PRESETS["morandi-cream"].colors);
+    panel.innerHTML = buildColorPanel(colors);
+    bindColorPanel();
+    applyTheme(theme, colors, readAppearancePanel());
+  });
+  document.querySelector("#saveSettingsBtn").addEventListener("click", e => {
+    e.preventDefault();
+    const theme = document.querySelector("#themeInput").value;
+    const next = {
+      ...getSettings(),
+      appName: document.querySelector("#appNameInput").value.trim() || "今天怎么吃",
+      nickname: document.querySelector("#nicknameInput").value.trim() || "我",
+      calorieTarget: Number(document.querySelector("#calorieTargetInput").value || 1600),
+      proteinTarget: Number(document.querySelector("#proteinTargetInput").value || 80),
+      waterTarget: Number(document.querySelector("#waterTargetInput").value || 8),
+      weightTarget: document.querySelector("#weightTargetInput").value,
+      cycleLength: Number(document.querySelector("#cycleLengthInput").value || 28),
+      periodLength: Number(document.querySelector("#periodLengthInput").value || 5),
+      preference: document.querySelector("#preferenceInput").value.trim(),
+      theme,
+      customColors: readColorPanel(),
+      appearance: readAppearancePanel()
+    };
+    setSettings(next);
+    applyTheme(next.theme, next.customColors, next.appearance);
+    dialog.close();
+    showToast("设置保存好了");
+    render();
+  });
+}
 function initNav() { document.querySelectorAll(".nav-item").forEach(btn => btn.addEventListener("click", () => { page=btn.dataset.page; window.scrollTo({top:0, behavior:"smooth"}); render(); })); }
-function initPwa() { if("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js?v=30").catch(()=>{}); }
+function initPwa() { if("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js?v=60").catch(()=>{}); }
 
 applyTheme(getSettings().theme, getSettings().customColors);
 initNav();

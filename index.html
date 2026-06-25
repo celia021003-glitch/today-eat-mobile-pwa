@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>今天怎么吃</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=30" />
+  <link rel="stylesheet" href="styles.css?v=60" />
 </head>
 <body>
   <div class="phone-shell">
@@ -28,6 +28,7 @@
       <button class="nav-item" data-page="lists"><span>🧺</span><small>清单</small></button>
       <button class="nav-item" data-page="life"><span>💧</span><small>生活</small></button>
       <button class="nav-item" data-page="body"><span>📈</span><small>身体</small></button>
+      <button class="nav-item" data-page="me"><span>✦</span><small>我</small></button>
       <button class="nav-item" data-page="journal"><span>🌙</span><small>日记</small></button>
     </nav>
   </div>
@@ -102,6 +103,46 @@
         <div id="customColorPanel" class="color-panel"></div>
       </section>
 
+      <section class="settings-section">
+        <h3>外观 DIY</h3>
+        <p class="soft-note">保留上面的预设色系，也可以继续加涂鸦、换字体、调透明度。颜色输入框会打开系统色卡；支持的浏览器会显示“吸色”。</p>
+        <div class="form-row">
+          <label>字体风格
+            <select id="fontStyleInput">
+              <option value="system">默认清爽</option>
+              <option value="wenkai">温柔文楷</option>
+              <option value="round">可爱圆润</option>
+              <option value="elegant">简洁高级</option>
+            </select>
+          </label>
+          <label>背景装饰
+            <select id="decorPresetInput">
+              <option value="none">无装饰</option>
+              <option value="journal">温柔手帐风</option>
+              <option value="food">可爱食物风</option>
+              <option value="minimal">简洁高级风</option>
+              <option value="custom">自定义混合</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-row">
+          <label>装饰密度
+            <select id="decorDensityInput">
+              <option value="low">少</option>
+              <option value="medium">中</option>
+              <option value="high">多</option>
+            </select>
+          </label>
+          <label>装饰透明度 <span id="decorOpacityLabel" class="inline-value">22%</span>
+            <input id="decorOpacityInput" type="range" min="0" max="0.65" step="0.01" />
+          </label>
+        </div>
+        <div>
+          <p class="field-title">装饰元素</p>
+          <div id="decorElementsPanel" class="toggle-grid"></div>
+        </div>
+      </section>
+
       <div class="settings-actions">
         <button value="cancel" class="ghost-btn">取消</button>
         <button id="saveSettingsBtn" class="primary-btn">保存设置</button>
@@ -111,6 +152,6 @@
 
   <div id="toast" class="toast" role="status"></div>
 
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=60"></script>
 </body>
 </html>

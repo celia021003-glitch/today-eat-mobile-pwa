@@ -1,9 +1,9 @@
-const CACHE = "today-eat-pwa-v30";
+const CACHE = "today-eat-pwa-v60";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=30",
-  "./app.js?v=30",
+  "./styles.css?v=60",
+  "./app.js?v=60",
   "./manifest.webmanifest"
 ];
 
