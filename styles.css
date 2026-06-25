@@ -1,19 +1,22 @@
 :root {
-  --bg: #F5F1EB;
-  --card: rgba(255, 252, 247, 0.86);
-  --card-solid: #FFFCF7;
-  --pink: #D8C2BC;
-  --sage: #B7C4B2;
-  --blue: #AEBBC3;
+  --bg: #F6F0EA;
+  --bg-2: #EFE7DE;
+  --card: rgba(255, 252, 247, 0.88);
+  --card-solid: #FFFDF8;
+  --pink: #D8BFC0;
+  --sage: #B8C5B2;
+  --blue: #AEBCC6;
   --brown: #8C6F63;
-  --apricot: #E7D7C9;
-  --lavender: #C7C1D3;
-  --text: #4E4A46;
-  --muted: #7B756F;
-  --line: #E4DDD5;
+  --apricot: #E8D4C2;
+  --lavender: #C9C1D6;
+  --danger: #B9827E;
+  --text: #4B4642;
+  --muted: #8B8179;
+  --line: rgba(140, 111, 99, 0.16);
   --white: #FFFFFF;
-  --shadow: 0 18px 45px rgba(126, 107, 96, 0.14);
-  --soft-shadow: 0 10px 25px rgba(126, 107, 96, 0.10);
+  --blob-opacity: .42;
+  --shadow: 0 18px 45px rgba(91, 75, 65, 0.14);
+  --soft-shadow: 0 10px 25px rgba(91, 75, 65, 0.10);
   --radius-xl: 28px;
   --radius-lg: 22px;
   --radius-md: 16px;
@@ -26,8 +29,8 @@ body {
   min-height: 100%;
   margin: 0;
   background:
-    radial-gradient(circle at 10% 0%, rgba(216, 194, 188, .45), transparent 34%),
-    radial-gradient(circle at 100% 16%, rgba(183, 196, 178, .35), transparent 30%),
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--pink) 45%, transparent), transparent 34%),
+    radial-gradient(circle at 100% 16%, color-mix(in srgb, var(--sage) 35%, transparent), transparent 30%),
     var(--bg);
   color: var(--text);
 }
@@ -49,7 +52,7 @@ button { border: 0; cursor: pointer; }
   height: 170px;
   border-radius: 50%;
   filter: blur(8px);
-  opacity: .45;
+  opacity: var(--blob-opacity);
   pointer-events: none;
   z-index: 0;
 }
@@ -262,16 +265,16 @@ p { line-height: 1.65; }
 label { display: grid; gap: 7px; color: var(--muted); font-size: 13px; }
 input, select, textarea {
   width: 100%;
-  border: 1px solid rgba(228,221,213,.85);
-  background: rgba(255,255,255,.74);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card-solid) 74%, transparent);
   border-radius: 17px;
   padding: 12px 14px;
   color: var(--text);
   outline: none;
 }
 input:focus, select:focus, textarea:focus {
-  border-color: rgba(140,111,99,.42);
-  box-shadow: 0 0 0 4px rgba(216,194,188,.20);
+  border-color: color-mix(in srgb, var(--brown) 42%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pink) 20%, transparent);
 }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .primary-btn, .secondary-btn, .ghost-btn {
@@ -281,11 +284,11 @@ input:focus, select:focus, textarea:focus {
   font-weight: 700;
 }
 .primary-btn {
-  background: linear-gradient(135deg, var(--brown), #A8867A);
+  background: linear-gradient(135deg, var(--brown), color-mix(in srgb, var(--brown) 72%, var(--pink)));
   color: white;
-  box-shadow: 0 12px 22px rgba(140,111,99,.22);
+  box-shadow: 0 12px 22px color-mix(in srgb, var(--brown) 22%, transparent);
 }
-.secondary-btn { background: rgba(183,196,178,.55); color: #4F604C; }
+.secondary-btn { background: color-mix(in srgb, var(--sage) 55%, transparent); color: var(--brown); }
 .ghost-btn { background: rgba(255,255,255,.58); color: var(--brown); }
 .full { width: 100%; }
 
@@ -385,7 +388,7 @@ input:focus, select:focus, textarea:focus {
   z-index: 20;
   width: min(448px, calc(100% - 24px));
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
   padding: 8px;
   background: rgba(255, 252, 247, .88);
@@ -468,4 +471,149 @@ input:focus, select:focus, textarea:focus {
     border-radius: 34px;
     min-height: calc(100vh - 24px);
   }
+}
+
+
+/* Theme variants are mostly applied by JavaScript through CSS variables. */
+html[data-theme="night"] input,
+html[data-theme="night"] select,
+html[data-theme="night"] textarea {
+  background: color-mix(in srgb, var(--card-solid) 88%, transparent);
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.mini-card {
+  min-height: 88px;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  padding: 12px 8px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--card-solid) 68%, transparent);
+  border: 1px solid color-mix(in srgb, var(--white) 72%, transparent);
+  box-shadow: var(--soft-shadow);
+  color: var(--text);
+}
+.mini-card span { font-size: 24px; }
+.mini-card strong { font-size: 20px; letter-spacing: -0.04em; }
+.mini-card small { color: var(--muted); font-size: 12px; }
+
+.stats-grid.two { grid-template-columns: repeat(2, 1fr); }
+.water-card { overflow: hidden; }
+.water-main {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 12px;
+  align-items: stretch;
+}
+.water-add {
+  min-height: 108px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--blue) 54%, transparent), color-mix(in srgb, var(--sage) 40%, transparent));
+  color: var(--text);
+  box-shadow: var(--soft-shadow);
+  display: grid;
+  place-items: center;
+}
+.water-add span { font-size: 38px; line-height: 1; }
+.water-add strong { font-size: 18px; }
+.water-count {
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--card-solid) 72%, transparent);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--soft-shadow);
+  padding: 16px;
+}
+.water-count strong { font-size: 46px; line-height: 1; letter-spacing: -0.08em; }
+.water-count span { color: var(--muted); }
+.cup-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cup {
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card-solid) 64%, transparent);
+  border: 1px solid color-mix(in srgb, var(--blue) 26%, transparent);
+  box-shadow: var(--soft-shadow);
+}
+.cup.filled { background: color-mix(in srgb, var(--blue) 36%, var(--card-solid)); }
+.todo-item.done { opacity: .62; }
+.todo-item.done strong { text-decoration: line-through; }
+.check-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 13px;
+  border: 1px solid color-mix(in srgb, var(--sage) 46%, transparent);
+  background: color-mix(in srgb, var(--sage) 28%, transparent);
+  color: var(--brown);
+  flex: 0 0 auto;
+  font-weight: 800;
+}
+.expense-amount {
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--danger);
+}
+.expense-amount.income { color: color-mix(in srgb, var(--sage) 70%, var(--text)); }
+.single-on-small { grid-template-columns: 1fr auto; align-items: end; }
+
+.custom-color-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--apricot) 26%, transparent);
+  border: 1px solid var(--line);
+}
+.custom-color-panel.hidden { display: none; }
+.card-title.mini { margin-bottom: 0; }
+.ghost-btn.tiny { min-height: 34px; padding: 8px 10px; border-radius: 14px; font-size: 12px; }
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.color-grid label {
+  padding: 10px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card-solid) 72%, transparent);
+  border: 1px solid var(--line);
+}
+.color-grid input[type="color"] {
+  height: 38px;
+  padding: 3px;
+  border-radius: 12px;
+}
+.alpha-grid { display: grid; gap: 10px; }
+.alpha-grid label {
+  padding: 10px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card-solid) 62%, transparent);
+  border: 1px solid var(--line);
+}
+.alpha-grid label span { float: right; color: var(--brown); font-weight: 800; }
+.alpha-grid input[type="range"] { padding: 0; }
+
+.chip.sage, .tag.sage { background: color-mix(in srgb, var(--sage) 46%, transparent); }
+.chip.pink, .tag.pink { background: color-mix(in srgb, var(--pink) 44%, transparent); }
+.chip.blue, .tag.blue { background: color-mix(in srgb, var(--blue) 42%, transparent); }
+.chip.lav, .tag.lav { background: color-mix(in srgb, var(--lavender) 40%, transparent); }
+.chip.apricot, .tag.apricot { background: color-mix(in srgb, var(--apricot) 50%, transparent); }
+
+@media (max-width: 390px) {
+  .bottom-nav { width: calc(100% - 12px); padding: 6px; gap: 2px; }
+  .nav-item { min-height: 52px; border-radius: 16px; }
+  .nav-item span { font-size: 18px; }
+  .nav-item em { font-size: 10px; }
+  .color-grid { grid-template-columns: repeat(2, 1fr); }
+  .single-on-small { grid-template-columns: 1fr; }
 }

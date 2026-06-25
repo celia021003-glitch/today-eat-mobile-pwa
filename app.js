@@ -1,11 +1,91 @@
 const STORAGE = {
-  settings: "todayEat.settings.v1",
+  settings: "todayEat.settings.v2",
+  oldSettings: "todayEat.settings.v1",
   logs: "todayEat.logs.v1",
   pantry: "todayEat.pantry.v1",
   cravings: "todayEat.cravings.v1",
   moods: "todayEat.moods.v1",
   photos: "todayEat.photos.v1",
+  water: "todayEat.water.v1",
+  todos: "todayEat.todos.v1",
+  expenses: "todayEat.expenses.v1",
 };
+
+const THEME_PRESETS = {
+  "morandi-cream": {
+    label: "奶油莫兰迪",
+    colors: {
+      bg: "#F6F0EA", bg2: "#EFE7DE", card: "#FFFCF7", cardSolid: "#FFFDF8",
+      text: "#4B4642", muted: "#8B8179", line: "#8C6F63",
+      pink: "#D8BFC0", sage: "#B8C5B2", blue: "#AEBCC6", brown: "#8C6F63",
+      apricot: "#E8D4C2", lavender: "#C9C1D6", danger: "#B9827E", white: "#FFFFFF",
+      shadow: "#5B4B41"
+    },
+    alpha: { card: 0.88, line: 0.16, blob: 0.42, shadow: 0.14 }
+  },
+  "morandi-pink": {
+    label: "雾粉莫兰迪",
+    colors: {
+      bg: "#F8F1EF", bg2: "#F0E4E2", card: "#FFFCF9", cardSolid: "#FFFDF9",
+      text: "#4D4643", muted: "#8F807B", line: "#967670",
+      pink: "#DCC1C4", sage: "#BBC8B6", blue: "#B6C1C9", brown: "#8F6F68",
+      apricot: "#EAD5C5", lavender: "#CCC2D8", danger: "#B77D7A", white: "#FFFFFF",
+      shadow: "#644B46"
+    },
+    alpha: { card: 0.90, line: 0.16, blob: 0.46, shadow: 0.14 }
+  },
+  "morandi-sage": {
+    label: "鼠尾草绿",
+    colors: {
+      bg: "#F3F3EC", bg2: "#E8ECE0", card: "#FFFDF8", cardSolid: "#FFFDF8",
+      text: "#464840", muted: "#7B8174", line: "#6F8064",
+      pink: "#D7C3BD", sage: "#AEBEAA", blue: "#AEBBC0", brown: "#756B5D",
+      apricot: "#E7D6BE", lavender: "#C5C0D0", danger: "#A97873", white: "#FFFFFF",
+      shadow: "#46553E"
+    },
+    alpha: { card: 0.90, line: 0.16, blob: 0.40, shadow: 0.13 }
+  },
+  "morandi-blue": {
+    label: "灰蓝冷淡风",
+    colors: {
+      bg: "#F0F2F2", bg2: "#E3E7E8", card: "#FFFDF9", cardSolid: "#FFFDF9",
+      text: "#42484B", muted: "#747E84", line: "#5F6F78",
+      pink: "#D4BFC0", sage: "#B6C2B4", blue: "#A7B7C0", brown: "#6F6762",
+      apricot: "#E2D1C0", lavender: "#C2C2D2", danger: "#A97876", white: "#FFFFFF",
+      shadow: "#414E55"
+    },
+    alpha: { card: 0.88, line: 0.16, blob: 0.38, shadow: 0.13 }
+  },
+  "night": {
+    label: "夜间模式",
+    colors: {
+      bg: "#24211F", bg2: "#302B28", card: "#37312D", cardSolid: "#39332F",
+      text: "#F3ECE5", muted: "#C6B8AD", line: "#FFFFFF",
+      pink: "#9D7778", sage: "#7F927B", blue: "#7D8F9B", brown: "#D3B7A4",
+      apricot: "#A98F76", lavender: "#9186A5", danger: "#C58A84", white: "#FFFFFF",
+      shadow: "#000000"
+    },
+    alpha: { card: 0.92, line: 0.12, blob: 0.28, shadow: 0.30 }
+  },
+  "custom": {
+    label: "自定义颜色",
+    colors: {},
+    alpha: {}
+  }
+};
+
+const DEFAULT_THEME_NAME = "morandi-cream";
+const DEFAULT_CUSTOM_COLORS = { ...THEME_PRESETS[DEFAULT_THEME_NAME].colors };
+const DEFAULT_CUSTOM_ALPHA = { ...THEME_PRESETS[DEFAULT_THEME_NAME].alpha };
+
+const COLOR_FIELDS = [
+  ["bg", "页面背景"], ["bg2", "背景装饰"], ["card", "卡片底色"], ["cardSolid", "实体卡片"],
+  ["text", "主文字"], ["muted", "辅助文字"], ["line", "边框线"],
+  ["pink", "雾粉"], ["sage", "鼠尾草绿"], ["blue", "灰蓝"], ["brown", "豆沙棕"],
+  ["apricot", "浅杏"], ["lavender", "雾紫"], ["danger", "删除/提醒"], ["shadow", "阴影颜色"]
+];
+const ALPHA_FIELDS = [["card", "卡片透明度"], ["line", "边框透明度"], ["blob", "装饰透明度"], ["shadow", "阴影透明度"]];
+
 
 const FOOD_DB = {
   "鸡胸肉": { unit: "g", base: 100, kcal: 165, protein: 31, carbs: 0, fat: 3.6, category: "蛋白质", emoji: "🍗" },
@@ -148,13 +228,27 @@ function load(key, fallback) {
   catch { return fallback; }
 }
 function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+
+const DEFAULT_SETTINGS = {
+  appName: "今天怎么吃",
+  nickname: "我",
+  calorieTarget: 1600,
+  proteinTarget: 80,
+  waterTarget: 8,
+  preference: "喜欢辣，喜欢热食，减脂但不想极端节食",
+  theme: DEFAULT_THEME_NAME,
+  customColors: DEFAULT_CUSTOM_COLORS,
+  customAlpha: DEFAULT_CUSTOM_ALPHA,
+};
+
 function getSettings() {
-  return load(STORAGE.settings, {
-    nickname: "我",
-    calorieTarget: 1600,
-    proteinTarget: 80,
-    preference: "喜欢辣，喜欢热食，减脂但不想极端节食",
-  });
+  const stored = load(STORAGE.settings, null) || load(STORAGE.oldSettings, null) || {};
+  return {
+    ...DEFAULT_SETTINGS,
+    ...stored,
+    customColors: { ...DEFAULT_CUSTOM_COLORS, ...(stored.customColors || {}) },
+    customAlpha: { ...DEFAULT_CUSTOM_ALPHA, ...(stored.customAlpha || {}) },
+  };
 }
 function setSettings(s) { save(STORAGE.settings, s); }
 function getLogs() { return load(STORAGE.logs, []); }
@@ -167,6 +261,78 @@ function getMoods() { return load(STORAGE.moods, []); }
 function setMoods(v) { save(STORAGE.moods, v); }
 function getPhotos() { return load(STORAGE.photos, []); }
 function setPhotos(v) { save(STORAGE.photos, v); }
+function getWater() { return load(STORAGE.water, {}); }
+function setWater(v) { save(STORAGE.water, v); }
+function getTodos() { return load(STORAGE.todos, []); }
+function setTodos(v) { save(STORAGE.todos, v); }
+function getExpenses() { return load(STORAGE.expenses, []); }
+function setExpenses(v) { save(STORAGE.expenses, v); }
+
+function hexToRgb(hex) {
+  const clean = String(hex || "#000000").replace("#", "").trim();
+  const full = clean.length === 3 ? clean.split("").map(x => x + x).join("") : clean.padEnd(6, "0").slice(0, 6);
+  const n = parseInt(full, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function rgba(hex, alpha = 1) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${Number(alpha)})`;
+}
+function getActiveThemeParts(settings = getSettings()) {
+  const preset = THEME_PRESETS[settings.theme] || THEME_PRESETS[DEFAULT_THEME_NAME];
+  if (settings.theme === "custom") {
+    return {
+      colors: { ...DEFAULT_CUSTOM_COLORS, ...(settings.customColors || {}) },
+      alpha: { ...DEFAULT_CUSTOM_ALPHA, ...(settings.customAlpha || {}) },
+    };
+  }
+  return { colors: preset.colors, alpha: preset.alpha };
+}
+function applyTheme(settingsOrName = getSettings()) {
+  const settings = typeof settingsOrName === "string" ? { ...getSettings(), theme: settingsOrName } : settingsOrName;
+  const { colors, alpha } = getActiveThemeParts(settings);
+  const root = document.documentElement;
+  root.dataset.theme = settings.theme || DEFAULT_THEME_NAME;
+  root.style.setProperty("--bg", colors.bg);
+  root.style.setProperty("--bg-2", colors.bg2);
+  root.style.setProperty("--card", rgba(colors.card, alpha.card));
+  root.style.setProperty("--card-solid", colors.cardSolid);
+  root.style.setProperty("--text", colors.text);
+  root.style.setProperty("--muted", colors.muted);
+  root.style.setProperty("--line", rgba(colors.line, alpha.line));
+  root.style.setProperty("--pink", colors.pink);
+  root.style.setProperty("--sage", colors.sage);
+  root.style.setProperty("--blue", colors.blue);
+  root.style.setProperty("--brown", colors.brown);
+  root.style.setProperty("--apricot", colors.apricot);
+  root.style.setProperty("--lavender", colors.lavender);
+  root.style.setProperty("--danger", colors.danger);
+  root.style.setProperty("--white", colors.white || "#FFFFFF");
+  root.style.setProperty("--blob-opacity", alpha.blob);
+  root.style.setProperty("--shadow", `0 18px 45px ${rgba(colors.shadow, alpha.shadow)}`);
+  root.style.setProperty("--soft-shadow", `0 10px 25px ${rgba(colors.shadow, Math.max(Number(alpha.shadow) - 0.04, 0.06))}`);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", colors.pink || colors.bg);
+}
+function previewThemeFromControls() {
+  const theme = document.querySelector("#themeInput")?.value || DEFAULT_THEME_NAME;
+  const settings = { ...getSettings(), theme };
+  if (theme === "custom") {
+    settings.customColors = readColorInputs();
+    settings.customAlpha = readAlphaInputs();
+  }
+  applyTheme(settings);
+}
+function readColorInputs() {
+  const out = {};
+  COLOR_FIELDS.forEach(([key]) => { out[key] = document.querySelector(`#color_${key}`)?.value || DEFAULT_CUSTOM_COLORS[key]; });
+  out.white = "#FFFFFF";
+  return out;
+}
+function readAlphaInputs() {
+  const out = {};
+  ALPHA_FIELDS.forEach(([key]) => { out[key] = Number(document.querySelector(`#alpha_${key}`)?.value || DEFAULT_CUSTOM_ALPHA[key]); });
+  return out;
+}
 
 function calcFood(foodName, amount) {
   const item = FOOD_DB[foodName];
@@ -202,23 +368,26 @@ function setTopbar() {
   const s = getSettings();
   const h = new Date().getHours();
   const hello = h < 11 ? "早上好" : h < 18 ? "下午好" : "晚上好";
-  dateLabel.textContent = `${prettyDate()} · ${hello}`;
-  greetingTitle.textContent = page === "home" ? `今天怎么吃` : ({
+  document.title = s.appName || "今天怎么吃";
+  dateLabel.textContent = `${s.appName || "今天怎么吃"} · ${prettyDate()} · ${hello}`;
+  greetingTitle.textContent = page === "home" ? `${hello}，${s.nickname || "我"}` : ({
     log: "记录一餐",
     photo: "拍一张饭",
     lists: "我的清单",
+    life: "生活记录",
     journal: "心情日记",
-  }[page] || `今天怎么吃`);
-  if (page === "home") greetingTitle.textContent = `${hello}，${s.nickname || "我"}`;
+  }[page] || (s.appName || "今天怎么吃"));
 }
 
 function render() {
+  applyTheme(getSettings());
   setTopbar();
   document.querySelectorAll(".nav-item").forEach(btn => btn.classList.toggle("active", btn.dataset.page === page));
   if (page === "home") renderHome();
   if (page === "log") renderLog();
   if (page === "photo") renderPhoto();
   if (page === "lists") renderLists();
+  if (page === "life") renderLife();
   if (page === "journal") renderJournal();
 }
 
@@ -262,6 +431,10 @@ function renderHome() {
   const s = getSettings();
   const t = totalsFor();
   const percent = Math.min(100, Math.round(t.kcal / s.calorieTarget * 100));
+  const waterCount = waterCountFor(today());
+  const todayTodos = getTodos().filter(x => x.date === today());
+  const undoneTodos = todayTodos.filter(x => !x.done).length;
+  const todayExpense = expenseTotalFor(today()).expense;
   app.innerHTML = `
     <section class="card hero-card">
       <div class="hero-row">
@@ -282,6 +455,12 @@ function renderHome() {
       <div class="stat-card"><span>蛋白质</span><strong>${macro(t.protein)}g</strong></div>
       <div class="stat-card"><span>碳水</span><strong>${macro(t.carbs)}g</strong></div>
       <div class="stat-card"><span>脂肪</span><strong>${macro(t.fat)}g</strong></div>
+    </section>
+
+    <section class="mini-grid">
+      <button class="mini-card" onclick="goPage('life')"><span>💧</span><strong>${waterCount}/${s.waterTarget}</strong><small>今日喝水</small></button>
+      <button class="mini-card" onclick="goPage('life')"><span>📝</span><strong>${undoneTodos}</strong><small>待办未完成</small></button>
+      <button class="mini-card" onclick="goPage('life')"><span>💸</span><strong>$${money(todayExpense)}</strong><small>今日支出</small></button>
     </section>
 
     <section class="card advice-card">
@@ -305,6 +484,7 @@ function renderHome() {
     </section>
   `;
 }
+window.goPage = (target) => { page = target; window.scrollTo({ top: 0, behavior: "smooth" }); render(); };
 
 function logItemHtml(x) {
   return `<div class="list-item">
@@ -669,25 +849,227 @@ function moodAdvice(mood, appetite) {
   return "今天就照顾好一餐。减脂不用靠完美，靠的是明天还能继续。";
 }
 
+
+function waterCountFor(dateStr = today()) {
+  return Number(getWater()[dateStr] || 0);
+}
+function setWaterCount(dateStr, count) {
+  const all = getWater();
+  all[dateStr] = Math.max(0, Number(count || 0));
+  setWater(all);
+}
+function expenseTotalFor(dateStr = today()) {
+  return getExpenses().filter(x => x.date === dateStr).reduce((acc, x) => {
+    if (x.type === "income") acc.income += Number(x.amount || 0);
+    else acc.expense += Number(x.amount || 0);
+    return acc;
+  }, { income: 0, expense: 0 });
+}
+function monthlyExpenseTotal() {
+  const ym = today().slice(0, 7);
+  return getExpenses().filter(x => x.date?.startsWith(ym)).reduce((acc, x) => {
+    if (x.type === "income") acc.income += Number(x.amount || 0);
+    else acc.expense += Number(x.amount || 0);
+    return acc;
+  }, { income: 0, expense: 0 });
+}
+function renderLife() {
+  const s = getSettings();
+  const waterCount = waterCountFor();
+  const waterPercent = Math.min(100, Math.round(waterCount / Math.max(1, s.waterTarget) * 100));
+  const todos = getTodos().filter(x => x.date === today());
+  const expenses = getExpenses().filter(x => x.date === today());
+  const dayTotal = expenseTotalFor();
+  const monthTotal = monthlyExpenseTotal();
+  app.innerHTML = `
+    <section class="card water-card">
+      <div class="card-title"><h2>喝水记录</h2><small>每天自动重新开始</small></div>
+      <div class="water-main">
+        <button class="water-add" id="addWaterBtn" aria-label="加一杯水"><span>💧</span><strong>+1 杯</strong></button>
+        <div class="water-count"><strong>${waterCount}</strong><span>/ ${s.waterTarget} 杯</span></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-label"><span>今日喝水</span><span>${waterPercent}%</span></div><div class="progress"><span style="width:${waterPercent}%"></span></div></div>
+      <div class="cup-grid" id="cupGrid">${Array.from({ length: Math.max(waterCount, s.waterTarget) }, (_, i) => `<button class="cup ${i < waterCount ? "filled" : ""}" data-cup="${i + 1}" title="双击或长按取消一杯">${i < waterCount ? "💧" : "▫️"}</button>`).join("")}</div>
+      <p class="soft-note">点一下加一杯。点错了，可以双击任意已记录水杯，或者长按它取消一杯。</p>
+    </section>
+
+    <section class="card">
+      <div class="card-title"><h2>To do list</h2><small>${todos.filter(x => !x.done).length} 个未完成</small></div>
+      <div class="form-row single-on-small">
+        <label>今天要做什么
+          <input id="todoInput" type="text" placeholder="比如：买燕麦奶、复习一小时" />
+        </label>
+        <button class="secondary-btn" id="addTodoBtn">加入</button>
+      </div>
+      ${todos.length ? `<div class="list-stack" style="margin-top:12px">${todos.map(todoItemHtml).join("")}</div>` : `<div class="empty" style="margin-top:12px">今天还没有待办。写很小的一件事也算。</div>`}
+    </section>
+
+    <section class="card">
+      <div class="card-title"><h2>记账</h2><small>今日支出 $${money(dayTotal.expense)}</small></div>
+      <div class="stats-grid two">
+        <div class="stat-card"><span>今日支出</span><strong>$${money(dayTotal.expense)}</strong></div>
+        <div class="stat-card"><span>本月支出</span><strong>$${money(monthTotal.expense)}</strong></div>
+      </div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="form-row">
+          <label>类型
+            <select id="expenseType"><option value="expense">支出</option><option value="income">收入</option></select>
+          </label>
+          <label>金额
+            <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="比如：6.5" />
+          </label>
+        </div>
+        <div class="form-row">
+          <label>分类
+            <select id="expenseCategory"><option>饮食</option><option>交通</option><option>学习</option><option>购物</option><option>房租</option><option>娱乐</option><option>其他</option></select>
+          </label>
+          <label>日期
+            <input id="expenseDate" type="date" value="${today()}" />
+          </label>
+        </div>
+        <label>备注
+          <input id="expenseNote" type="text" placeholder="比如：奶茶、超市、公交" />
+        </label>
+        <button class="primary-btn full" id="addExpenseBtn">保存账目</button>
+      </div>
+      ${expenses.length ? `<div class="list-stack" style="margin-top:14px">${expenses.map(expenseItemHtml).join("")}</div>` : `<div class="empty" style="margin-top:14px">今天还没有记账。先从饮食和交通这种小支出记起。</div>`}
+    </section>
+  `;
+  bindLife();
+}
+function bindLife() {
+  document.querySelector("#addWaterBtn").addEventListener("click", () => {
+    setWaterCount(today(), waterCountFor() + 1);
+    showToast("加了一杯水");
+    renderLife();
+  });
+  document.querySelectorAll(".cup.filled").forEach(btn => {
+    let pressTimer;
+    const remove = () => { setWaterCount(today(), waterCountFor() - 1); showToast("撤回一杯水"); renderLife(); };
+    btn.addEventListener("dblclick", remove);
+    btn.addEventListener("pointerdown", () => { pressTimer = setTimeout(remove, 650); });
+    btn.addEventListener("pointerup", () => clearTimeout(pressTimer));
+    btn.addEventListener("pointerleave", () => clearTimeout(pressTimer));
+    btn.addEventListener("pointercancel", () => clearTimeout(pressTimer));
+  });
+  document.querySelector("#addTodoBtn").addEventListener("click", () => {
+    const input = document.querySelector("#todoInput");
+    const text = input.value.trim();
+    if (!text) return showToast("先写一个待办");
+    setTodos([{ id: uid(), text, done: false, date: today(), createdAt: Date.now() }, ...getTodos()]);
+    showToast("待办记好了");
+    renderLife();
+  });
+  document.querySelector("#addExpenseBtn").addEventListener("click", () => {
+    const amount = Number(document.querySelector("#expenseAmount").value || 0);
+    if (!amount || amount <= 0) return showToast("金额要大于 0");
+    const item = {
+      id: uid(),
+      type: document.querySelector("#expenseType").value,
+      amount,
+      category: document.querySelector("#expenseCategory").value,
+      note: document.querySelector("#expenseNote").value.trim(),
+      date: document.querySelector("#expenseDate").value || today(),
+      createdAt: Date.now(),
+    };
+    setExpenses([item, ...getExpenses()]);
+    showToast("账目存好了");
+    renderLife();
+  });
+}
+function todoItemHtml(t) {
+  return `<div class="list-item todo-item ${t.done ? "done" : ""}"><button class="check-btn" onclick="toggleTodo('${t.id}')">${t.done ? "✓" : ""}</button><div><strong>${t.text}</strong><small>${t.done ? "已完成" : "今天"}</small></div><button class="delete-btn" onclick="deleteTodo('${t.id}')">×</button></div>`;
+}
+function expenseItemHtml(x) {
+  const sign = x.type === "income" ? "+" : "-";
+  return `<div class="list-item"><div><strong>${x.type === "income" ? "收入" : "支出"} · ${x.category}</strong><small>${x.note || "没有备注"} · ${x.date}</small></div><div class="expense-amount ${x.type}">${sign}$${money(x.amount)}</div><button class="delete-btn" onclick="deleteExpense('${x.id}')">×</button></div>`;
+}
+window.toggleTodo = (id) => { setTodos(getTodos().map(x => x.id === id ? { ...x, done: !x.done } : x)); render(); };
+window.deleteTodo = (id) => { setTodos(getTodos().filter(x => x.id !== id)); showToast("已删除待办"); render(); };
+window.deleteExpense = (id) => { setExpenses(getExpenses().filter(x => x.id !== id)); showToast("已删除账目"); render(); };
+
 function initSettingsDialog() {
   const dialog = document.querySelector("#settingsDialog");
   const btn = document.querySelector("#settingsBtn");
-  btn.addEventListener("click", () => {
-    const s = getSettings();
+  const fillThemeControls = (s) => {
+    document.querySelector("#appNameInput").value = s.appName;
     document.querySelector("#nicknameInput").value = s.nickname;
     document.querySelector("#calorieTargetInput").value = s.calorieTarget;
     document.querySelector("#proteinTargetInput").value = s.proteinTarget;
+    document.querySelector("#waterTargetInput").value = s.waterTarget;
     document.querySelector("#preferenceInput").value = s.preference;
+    document.querySelector("#themeInput").value = s.theme || DEFAULT_THEME_NAME;
+    COLOR_FIELDS.forEach(([key]) => {
+      const input = document.querySelector(`#color_${key}`);
+      if (input) input.value = s.customColors?.[key] || DEFAULT_CUSTOM_COLORS[key];
+    });
+    ALPHA_FIELDS.forEach(([key]) => {
+      const input = document.querySelector(`#alpha_${key}`);
+      const valueLabel = document.querySelector(`#alphaValue_${key}`);
+      if (input) input.value = s.customAlpha?.[key] ?? DEFAULT_CUSTOM_ALPHA[key];
+      if (valueLabel) valueLabel.textContent = `${Math.round(Number(input?.value || 0) * 100)}%`;
+    });
+    document.querySelector("#customColorPanel")?.classList.toggle("hidden", document.querySelector("#themeInput").value !== "custom");
+  };
+
+  btn.addEventListener("click", () => {
+    const s = getSettings();
+    fillThemeControls(s);
+    applyTheme(s);
     dialog.showModal();
   });
+
+  document.querySelector("#themeInput").addEventListener("change", () => {
+    const selected = document.querySelector("#themeInput").value;
+    document.querySelector("#customColorPanel")?.classList.toggle("hidden", selected !== "custom");
+    previewThemeFromControls();
+  });
+  document.querySelectorAll("[data-theme-control]").forEach(input => {
+    input.addEventListener("input", () => {
+      if (input.type === "range") {
+        const label = document.querySelector(`#alphaValue_${input.dataset.alphaKey}`);
+        if (label) label.textContent = `${Math.round(Number(input.value) * 100)}%`;
+      }
+      if (document.querySelector("#themeInput").value !== "custom") {
+        document.querySelector("#themeInput").value = "custom";
+        document.querySelector("#customColorPanel")?.classList.remove("hidden");
+      }
+      previewThemeFromControls();
+    });
+  });
+
+  document.querySelector("#resetColorsBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    COLOR_FIELDS.forEach(([key]) => { document.querySelector(`#color_${key}`).value = DEFAULT_CUSTOM_COLORS[key]; });
+    ALPHA_FIELDS.forEach(([key]) => {
+      const input = document.querySelector(`#alpha_${key}`);
+      input.value = DEFAULT_CUSTOM_ALPHA[key];
+      const label = document.querySelector(`#alphaValue_${key}`);
+      if (label) label.textContent = `${Math.round(DEFAULT_CUSTOM_ALPHA[key] * 100)}%`;
+    });
+    document.querySelector("#themeInput").value = "custom";
+    previewThemeFromControls();
+  });
+
+  dialog.addEventListener("cancel", () => applyTheme(getSettings()));
+  dialog.querySelector(".ghost-btn")?.addEventListener("click", () => applyTheme(getSettings()));
+
   document.querySelector("#saveSettingsBtn").addEventListener("click", (e) => {
     e.preventDefault();
-    setSettings({
+    const nextSettings = {
+      ...getSettings(),
+      appName: document.querySelector("#appNameInput").value.trim() || "今天怎么吃",
       nickname: document.querySelector("#nicknameInput").value.trim() || "我",
       calorieTarget: Number(document.querySelector("#calorieTargetInput").value || 1600),
       proteinTarget: Number(document.querySelector("#proteinTargetInput").value || 80),
+      waterTarget: Number(document.querySelector("#waterTargetInput").value || 8),
       preference: document.querySelector("#preferenceInput").value.trim(),
-    });
+      theme: document.querySelector("#themeInput").value || DEFAULT_THEME_NAME,
+      customColors: readColorInputs(),
+      customAlpha: readAlphaInputs(),
+    };
+    setSettings(nextSettings);
+    applyTheme(nextSettings);
     dialog.close();
     showToast("设置保存好了");
     render();
@@ -708,6 +1090,7 @@ function initPwa() {
   }
 }
 
+applyTheme(getSettings());
 initNav();
 initSettingsDialog();
 initPwa();
