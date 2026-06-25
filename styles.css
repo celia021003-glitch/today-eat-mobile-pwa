@@ -392,6 +392,32 @@ html[data-decor="none"] .decor-layer { display: none; }
 
 
 /* v6 「我」小宇宙手帐 */
+
+.self-page,
+.self-gate,
+.self-editor,
+.self-detail,
+.self-detail-content,
+.memory-star {
+  font-family: "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", "FangSong", "Songti SC", serif;
+  letter-spacing: 0.02em;
+}
+.self-gate h2,
+.self-orbit-title h2,
+.self-detail h2 {
+  font-family: "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", "FangSong", "Songti SC", serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.self-toolbar,
+.self-toolbar button,
+.self-toolbar select,
+.self-toolbar label,
+.self-meta-grid input,
+.self-meta-grid select {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
 .self-page {
   position: relative;
   isolation: isolate;

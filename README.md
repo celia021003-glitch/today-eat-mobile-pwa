@@ -1,4 +1,4 @@
-# 今天怎么吃 · v6 
+# 今天怎么吃 · v6.1 我的小宇宙手帐版
 
 本版本在 v5 外观 DIY 基础上新增「我」模块：
 
@@ -21,4 +21,4 @@
 - sw.js
 
 更新后访问：
-https://celia021003-glitch.github.io/today-eat-mobile-pwa/?v=60
+https://celia021003-glitch.github.io/today-eat-mobile-pwa/?v=61

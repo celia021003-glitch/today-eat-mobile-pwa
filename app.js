@@ -482,7 +482,7 @@ function setTopbar() {
   const h = new Date().getHours();
   const hello = h < 11 ? "早上好" : h < 18 ? "下午好" : "晚上好";
   dateLabel.textContent = `${prettyDate()} · ${hello}`;
-  const names = { home: `${hello}，${s.nickname || "我"}`, log: "记录一餐", photo: "拍一张饭", lists: "我的清单", life: "生活小账本", body: "身体记录", me: "我的小宇宙", journal: "心情日记" };
+  const names = { home: `${hello}，${s.nickname || "我"}`, log: "记录一餐", photo: "拍一张饭", lists: "我的清单", life: "生活小账本", body: "身体记录", me: "我", journal: "心情日记" };
   greetingTitle.textContent = page === "home" ? (s.appName || names.home) : (names[page] || s.appName || "今天怎么吃");
 }
 function render() {
@@ -818,11 +818,11 @@ function renderMe() {
         <div class="self-orbit-title">
           <div>
             <p class="date-label">只属于你的秘密入口</p>
-            <h2>我 · 小宇宙</h2>
+            <h2>我</h2>
           </div>
           <span style="font-size:34px">🔮</span>
         </div>
-        <p class="soft-note">这里不是任务，也不是打卡。这里是你和自己说话的地方。完成了什么、被什么触动、得到了什么，都可以变成一颗散落的小星星。</p>
+        <p class="soft-note">今天想写些什么呢？每一刻的记忆碎片都会在这里变成一颗星星，建立自己的漫天星辰吧～</p>
       </section>
 
       <section class="card self-gate">
@@ -850,6 +850,7 @@ function renderMe() {
           <button type="button" id="selfAnnotateBtn">批注</button>
           <select id="selfFontSelect" title="字体">
             <option value="-apple-system">默认</option>
+            <option value="Kaiti SC" selected>清俊手写</option>
             <option value="Kaiti SC">文楷</option>
             <option value="Songti SC">宋体</option>
             <option value="Avenir Next">高级</option>
@@ -1140,7 +1141,7 @@ function initSettingsDialog() {
   });
 }
 function initNav() { document.querySelectorAll(".nav-item").forEach(btn => btn.addEventListener("click", () => { page=btn.dataset.page; window.scrollTo({top:0, behavior:"smooth"}); render(); })); }
-function initPwa() { if("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js?v=60").catch(()=>{}); }
+function initPwa() { if("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js?v=61").catch(()=>{}); }
 
 applyTheme(getSettings().theme, getSettings().customColors);
 initNav();
