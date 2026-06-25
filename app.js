@@ -826,7 +826,7 @@ function renderMe() {
       </section>
 
       <section class="card self-gate">
-        <div class="card-title"><h2>写一片记忆</h2><small>荧光笔 · 图片 · 批注</small></div>
+        <div class="card-title"><h2>写一片记忆</h2></div>
         <div class="self-meta-grid">
           <label>这一片记忆的名字
             <input id="selfTitle" type="text" placeholder="比如：今天我终于没有责怪自己" />
@@ -849,12 +849,12 @@ function renderMe() {
           <button type="button" data-highlight="#DCE8D7">叶子绿</button>
           <button type="button" id="selfAnnotateBtn">批注</button>
           <select id="selfFontSelect" title="字体">
-            <option value="-apple-system">默认</option>
-            <option value="Kaiti SC" selected>清俊手写</option>
+            <option value="HanziPen SC" selected>张扬手写</option>
+            <option value="Hannotate SC">舒展批注</option>
+            <option value="STXingkai">行楷飘逸</option>
             <option value="Kaiti SC">文楷</option>
             <option value="Songti SC">宋体</option>
-            <option value="Avenir Next">高级</option>
-            <option value="Arial Rounded MT Bold">圆润</option>
+            <option value="Avenir Next">简洁高级</option>
           </select>
           <select id="selfSizeSelect" title="字号">
             <option value="2">小</option><option value="3" selected>正文</option><option value="4">大</option><option value="5">标题</option>
