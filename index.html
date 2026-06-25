@@ -2,44 +2,48 @@
 <html lang="zh-CN" data-theme="morandi-cream">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#D8C2BC" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#F6F0EA" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="今天怎么吃" />
   <title>今天怎么吃</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=30" />
 </head>
 <body>
   <div class="phone-shell">
-    <div class="bg-blob blob-one"></div>
-    <div class="bg-blob blob-two"></div>
     <header class="topbar">
       <div>
-        <p class="eyebrow" id="dateLabel">今天</p>
+        <p id="dateLabel" class="date-label">今天</p>
         <h1 id="greetingTitle">今天怎么吃</h1>
       </div>
-      <button class="icon-btn" id="settingsBtn" aria-label="设置">⚙️</button>
+      <button id="settingsBtn" class="icon-btn" aria-label="设置">⚙️</button>
     </header>
 
     <main id="app" class="app-content"></main>
 
-    <nav class="bottom-nav" aria-label="主导航">
-      <button class="nav-item active" data-page="home"><span>🏠</span><em>首页</em></button>
-      <button class="nav-item" data-page="log"><span>🍱</span><em>记录</em></button>
-      <button class="nav-item" data-page="photo"><span>📷</span><em>拍照</em></button>
-      <button class="nav-item" data-page="lists"><span>🧺</span><em>清单</em></button>
-      <button class="nav-item" data-page="life"><span>💧</span><em>生活</em></button>
-      <button class="nav-item" data-page="journal"><span>🌙</span><em>日记</em></button>
+    <nav class="bottom-nav" aria-label="底部导航">
+      <button class="nav-item active" data-page="home"><span>🏠</span><small>首页</small></button>
+      <button class="nav-item" data-page="log"><span>🍱</span><small>记录</small></button>
+      <button class="nav-item" data-page="lists"><span>🧺</span><small>清单</small></button>
+      <button class="nav-item" data-page="life"><span>💧</span><small>生活</small></button>
+      <button class="nav-item" data-page="body"><span>📈</span><small>身体</small></button>
+      <button class="nav-item" data-page="journal"><span>🌙</span><small>日记</small></button>
     </nav>
+  </div>
 
-    <dialog id="settingsDialog" class="modal-card">
-      <form method="dialog" class="settings-form">
-        <div class="modal-head">
-          <h2>小设置</h2>
-          <button class="ghost-btn" value="cancel">关闭</button>
+  <dialog id="settingsDialog" class="settings-dialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head">
+        <div>
+          <h2>设置</h2>
+          <p>名字、目标和颜色都可以在这里改。</p>
         </div>
+        <button value="cancel" class="icon-btn" aria-label="关闭">×</button>
+      </div>
+
+      <section class="settings-section">
+        <h3>基础</h3>
         <label>小软件名字
           <input id="appNameInput" type="text" placeholder="比如：今天怎么吃" />
         </label>
@@ -48,60 +52,65 @@
         </label>
         <div class="form-row">
           <label>每日目标热量 kcal
-            <input id="calorieTargetInput" type="number" min="800" max="4000" step="50" />
+            <input id="calorieTargetInput" type="number" min="800" step="50" />
           </label>
           <label>每日蛋白质目标 g
-            <input id="proteinTargetInput" type="number" min="20" max="250" step="5" />
+            <input id="proteinTargetInput" type="number" min="20" step="5" />
           </label>
         </div>
-        <label>每日喝水目标 / 杯
-          <input id="waterTargetInput" type="number" min="1" max="30" step="1" />
+        <div class="form-row">
+          <label>每日饮水目标 杯
+            <input id="waterTargetInput" type="number" min="1" max="20" step="1" />
+          </label>
+          <label>目标体重 kg
+            <input id="weightTargetInput" type="number" min="20" step="0.1" />
+          </label>
+        </div>
+        <label>我的饮食偏好
+          <textarea id="preferenceInput" rows="3" placeholder="比如：喜欢辣，喜欢热食，减脂但不想极端节食"></textarea>
         </label>
-        <label>主题配色
+      </section>
+
+      <section class="settings-section">
+        <h3>生理期预测</h3>
+        <div class="form-row">
+          <label>平均周期 天
+            <input id="cycleLengthInput" type="number" min="18" max="45" step="1" />
+          </label>
+          <label>经期长度 天
+            <input id="periodLengthInput" type="number" min="2" max="10" step="1" />
+          </label>
+        </div>
+        <p class="soft-note">预测只是根据你记录的开始日期和平均周期估算，不替代医疗判断。</p>
+      </section>
+
+      <section class="settings-section">
+        <h3>主题</h3>
+        <label>预设主题
           <select id="themeInput">
             <option value="morandi-cream">奶油莫兰迪</option>
             <option value="morandi-pink">雾粉莫兰迪</option>
             <option value="morandi-sage">鼠尾草绿</option>
             <option value="morandi-blue">灰蓝冷淡风</option>
             <option value="night">夜间模式</option>
-            <option value="custom">自定义颜色</option>
+            <option value="custom">我的自定义</option>
           </select>
         </label>
-        <section id="customColorPanel" class="custom-color-panel hidden">
-          <div class="card-title mini"><h3>自定义颜色</h3><button class="ghost-btn tiny" id="resetColorsBtn">恢复默认</button></div>
-          <div class="color-grid">
-            <label>页面背景<input data-theme-control id="color_bg" type="color" /></label>
-            <label>背景装饰<input data-theme-control id="color_bg2" type="color" /></label>
-            <label>卡片底色<input data-theme-control id="color_card" type="color" /></label>
-            <label>实体卡片<input data-theme-control id="color_cardSolid" type="color" /></label>
-            <label>主文字<input data-theme-control id="color_text" type="color" /></label>
-            <label>辅助文字<input data-theme-control id="color_muted" type="color" /></label>
-            <label>边框线<input data-theme-control id="color_line" type="color" /></label>
-            <label>雾粉<input data-theme-control id="color_pink" type="color" /></label>
-            <label>鼠尾草绿<input data-theme-control id="color_sage" type="color" /></label>
-            <label>灰蓝<input data-theme-control id="color_blue" type="color" /></label>
-            <label>豆沙棕<input data-theme-control id="color_brown" type="color" /></label>
-            <label>浅杏<input data-theme-control id="color_apricot" type="color" /></label>
-            <label>雾紫<input data-theme-control id="color_lavender" type="color" /></label>
-            <label>删除/提醒<input data-theme-control id="color_danger" type="color" /></label>
-            <label>阴影颜色<input data-theme-control id="color_shadow" type="color" /></label>
-          </div>
-          <div class="alpha-grid">
-            <label>卡片透明度 <span id="alphaValue_card">88%</span><input data-theme-control data-alpha-key="card" id="alpha_card" type="range" min="0.35" max="1" step="0.01" /></label>
-            <label>边框透明度 <span id="alphaValue_line">16%</span><input data-theme-control data-alpha-key="line" id="alpha_line" type="range" min="0.02" max="0.6" step="0.01" /></label>
-            <label>装饰透明度 <span id="alphaValue_blob">42%</span><input data-theme-control data-alpha-key="blob" id="alpha_blob" type="range" min="0" max="0.9" step="0.01" /></label>
-            <label>阴影透明度 <span id="alphaValue_shadow">14%</span><input data-theme-control data-alpha-key="shadow" id="alpha_shadow" type="range" min="0" max="0.5" step="0.01" /></label>
-          </div>
-        </section>
-        <label>饮食偏好
-          <textarea id="preferenceInput" rows="3" placeholder="比如：喜欢辣，喜欢热食，不想极端节食"></textarea>
-        </label>
-        <button id="saveSettingsBtn" class="primary-btn" value="default">保存设置</button>
-      </form>
-    </dialog>
+        <div class="settings-actions small-gap">
+          <button type="button" class="secondary-btn" id="resetThemeBtn">恢复当前主题默认色</button>
+        </div>
+        <div id="customColorPanel" class="color-panel"></div>
+      </section>
 
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  </div>
-  <script src="app.js?v=12"></script>
+      <div class="settings-actions">
+        <button value="cancel" class="ghost-btn">取消</button>
+        <button id="saveSettingsBtn" class="primary-btn">保存设置</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="app.js?v=30"></script>
 </body>
 </html>

@@ -1,14 +1,17 @@
-# 今天怎么吃 · 生活记录版 v2
+# 今天怎么吃 v3
 
-替换 GitHub 仓库里的 index.html、styles.css、app.js、sw.js 即可。
-
-新增：
-- 设置里自定义小软件名字
-- 主题即时预览
-- 自定义颜色与透明度
-- 喝水记录：点一下加一杯，双击或长按已记录水杯取消
+本版本新增：
+- 自定义小软件名字、昵称和目标
+- 主题即时预览、自定义颜色和卡片透明度
+- 喝水记录：点一下加一杯，双击或长按取消一杯，每天自动重置
 - To do list
 - 记账功能
+- 体重记录和趋势曲线
+- 生理期记录与下次预测
+- 小冰箱食材消耗：减一份、加一份、用完、删除
+- 智能搭配：按早餐/午餐/晚餐/加餐生成建议，可输入冰箱外想吃的食材或菜名
 
-更新后请打开：
-https://你的用户名.github.io/today-eat-mobile-pwa/?v=12
+上传到 GitHub 时，请替换：index.html、styles.css、app.js、sw.js。manifest.webmanifest 可选替换。
+
+打开测试链接建议使用：
+https://你的用户名.github.io/today-eat-mobile-pwa/?v=30
